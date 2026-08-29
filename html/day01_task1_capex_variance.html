@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Day 1 Task 1 — Q2 Capex Variance</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem; background: #f7f7f8; color: #1a1a1a; }
+  h1 { font-size: 1.25rem; }
+  table { border-collapse: collapse; width: 100%; background: #fff; }
+  th, td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #e2e2e2; text-align: right; font-size: 0.9rem; }
+  th:first-child, th:nth-child(2), th:nth-child(3), th:nth-child(4),
+  td:first-child, td:nth-child(2), td:nth-child(3), td:nth-child(4) { text-align: left; }
+  th { background: #eee; }
+  tr.flag { background: #fdecea; }
+  .pct-bad { color: #b3261e; font-weight: 600; }
+  #status { font-size: 0.85rem; color: #666; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+
+<h1>Q2 FY2026 Capex — Actual vs. Budget Variance</h1>
+<div id="status">Loading…</div>
+<table id="report">
+  <thead>
+    <tr>
+      <th>Project</th><th>Business Unit</th><th>PM</th><th>Status</th>
+      <th>Budget</th><th>Actual</th><th>Variance $</th><th>Variance %</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+  // Fill in from your Supabase project's Settings > API page.
+  // The anon key is safe to expose client-side; RLS policies control access.
+  const SUPABASE_URL = "YOUR_SUPABASE_URL";
+  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const FLAG_THRESHOLD = 10; // %
+
+  async function loadReport() {
+    const statusEl = document.getElementById("status");
+    const tbody = document.querySelector("#report tbody");
+
+    const { data, error } = await client
+      .from("capex_variance_q2_2026")
+      .select("*")
+      .order("variance_pct", { ascending: false });
+
+    if (error) {
+      statusEl.textContent = "Error loading report: " + error.message;
+      return;
+    }
+
+    statusEl.textContent = `${data.length} active projects — rows over ${FLAG_THRESHOLD}% variance are flagged.`;
+
+    for (const row of data) {
+      const tr = document.createElement("tr");
+      const flagged = Math.abs(row.variance_pct ?? 0) > FLAG_THRESHOLD;
+      if (flagged) tr.classList.add("flag");
+
+      tr.innerHTML = `
+        <td>${row.project_name}</td>
+        <td>${row.business_unit}</td>
+        <td>${row.project_manager}</td>
+        <td>${row.status ?? "ACTIVE"}</td>
+        <td>$${Number(row.budget_amount).toLocaleString()}</td>
+        <td>$${Number(row.actual_amount).toLocaleString()}</td>
+        <td>$${Number(row.variance_amount).toLocaleString()}</td>
+        <td class="${flagged ? "pct-bad" : ""}">${row.variance_pct ?? "—"}%</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  loadReport();
+</script>
+
+</body>
+</html>

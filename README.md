@@ -6,5 +6,11 @@ and `docs/`. Progress (title, salary, bonus, reviews) is tracked in
 [`docs/CAREER_LOG.md`](docs/CAREER_LOG.md).
 
 ## Structure
-- `sql/` — SQL deliverables per task (e.g. `day01_task1_capex_variance.sql`)
+- `supabase/` — Postgres schema and per-task SQL (views/queries) run against Supabase
+- `html/` — front-end dashboards that read from Supabase for each task
 - `docs/` — career log, annual reviews, business case write-ups
+
+## Setup
+1. Create tables: run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor.
+2. Run each day's task SQL (e.g. [`supabase/day01_task1_capex_variance.sql`](supabase/day01_task1_capex_variance.sql)) to create its view.
+3. Open the matching HTML file (e.g. [`html/day01_task1_capex_variance.html`](html/day01_task1_capex_variance.html)) and fill in your Supabase project URL + anon key.

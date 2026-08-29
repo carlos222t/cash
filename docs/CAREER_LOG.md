@@ -12,4 +12,4 @@
 ## Day-by-Day Task Log
 | Day | Task | Deadline | Tool | Outcome |
 |---|---|---|---|---|
-| 1 | Task 1: Q2 Capex variance pull | EOD | SQL (finance data warehouse) | In progress |
+| 1 | Task 1: Q2 Capex variance pull | EOD | Supabase (Postgres) + HTML dashboard | In progress |
