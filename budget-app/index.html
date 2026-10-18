@@ -157,7 +157,10 @@
     flex-direction: column;
     gap: 2px;
     overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.1s ease;
   }
+  .cal-day:hover { transform: scale(1.05); }
   .cal-day.outside { opacity: 0.35; }
   .cal-day .cal-num { font-weight: 700; font-size: 0.75rem; }
   .cal-day .cal-spent, .cal-day .cal-hours, .cal-day .cal-paid {
@@ -424,6 +427,30 @@
       </div>
       <div class="calendar-weekdays" id="calendarWeekdays"></div>
       <div class="calendar-grid" id="calendarGrid"></div>
+      <div class="period-meta" style="margin-top:10px;">Click any day to see that week's stats.</div>
+    </div>
+
+    <div class="card hidden" id="weekDetailCard">
+      <h2 id="weekDetailRange"></h2>
+      <div class="period-meta" id="weekDetailStatus" style="margin-bottom:12px;"></div>
+      <div class="stats-col">
+        <div class="stat-row">
+          <span class="stat-label">Spent</span>
+          <span class="stat-value" id="weekDetailSpent"></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Budgeted</span>
+          <span class="stat-value" id="weekDetailBudgeted"></span>
+        </div>
+        <div class="stat-row hidden" id="weekDetailHoursRow">
+          <span class="stat-label">Hours worked</span>
+          <span class="stat-value" id="weekDetailHours"></span>
+        </div>
+        <div class="stat-row hidden" id="weekDetailPaidRow">
+          <span class="stat-label">Paycheck received</span>
+          <span class="stat-value" id="weekDetailPaid"></span>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -1219,11 +1246,11 @@
     gridEl.innerHTML = "";
 
     for (var w = 0; w < weeksCount; w++) {
-      var weekStart = addDays(gridStart, w * 7);
-      var weekDates = [];
+      let weekStart = addDays(gridStart, w * 7);
+      let weekDates = [];
       for (var i = 0; i < 7; i++) weekDates.push(addDays(weekStart, i));
 
-      var weeklySpent = 0, weeklyBudget = 0;
+      let weeklySpent = 0, weeklyBudget = 0;
       weekDates.forEach(function (d) {
         weeklySpent += sumExpensesOnDate(d);
         if (budgetCfg && budgetCfg.categories.length) {
@@ -1234,13 +1261,16 @@
           weeklyBudget += allocated / periodLen;
         }
       });
-      var ratio = weeklyBudget > 0 ? weeklySpent / weeklyBudget : null;
-      var bg = weekColor(ratio);
+      let ratio = weeklyBudget > 0 ? weeklySpent / weeklyBudget : null;
+      let bg = weekColor(ratio);
 
       weekDates.forEach(function (d) {
         var cell = document.createElement("div");
         cell.className = "cal-day" + (d.getMonth() !== month ? " outside" : "");
         cell.style.background = bg;
+        cell.addEventListener("click", function () {
+          showWeekDetail(weekDates, weeklySpent, weeklyBudget, ratio);
+        });
 
         var num = document.createElement("div");
         num.className = "cal-num";
@@ -1276,6 +1306,56 @@
         gridEl.appendChild(cell);
       });
     }
+
+    document.getElementById("weekDetailCard").classList.add("hidden");
+  }
+
+  function showWeekDetail(weekDates, weeklySpent, weeklyBudget, ratio) {
+    document.getElementById("weekDetailCard").classList.remove("hidden");
+    document.getElementById("weekDetailRange").textContent =
+      "Week of " + fmtDate(weekDates[0]) + " – " + fmtDate(weekDates[6]);
+
+    var statusEl = document.getElementById("weekDetailStatus");
+    if (ratio === null) {
+      statusEl.textContent = "No budget data for this week yet.";
+      statusEl.style.color = "var(--muted)";
+    } else {
+      var diff = weeklyBudget - weeklySpent;
+      if (diff >= 0) {
+        statusEl.textContent = fmtMoney(diff) + " under budget this week";
+        statusEl.style.color = "var(--good)";
+      } else {
+        statusEl.textContent = fmtMoney(Math.abs(diff)) + " over budget this week";
+        statusEl.style.color = "var(--danger)";
+      }
+    }
+
+    document.getElementById("weekDetailSpent").textContent = fmtMoney(weeklySpent);
+    document.getElementById("weekDetailBudgeted").textContent = ratio === null ? "—" : fmtMoney(weeklyBudget);
+
+    var hoursRow = document.getElementById("weekDetailHoursRow");
+    if (config.type === "hourly") {
+      var totalHours = weekDates.reduce(function (sum, d) { return sum + sumHoursOnDate(d); }, 0);
+      hoursRow.classList.remove("hidden");
+      document.getElementById("weekDetailHours").textContent = totalHours + " hr" + (totalHours === 1 ? "" : "s");
+    } else {
+      hoursRow.classList.add("hidden");
+    }
+
+    var totalPaid = 0;
+    weekDates.forEach(function (d) {
+      var per = computePeriod(config, d);
+      if (sameDate(per.payday, d)) totalPaid += computePeriodIncome(per);
+    });
+    var paidRow = document.getElementById("weekDetailPaidRow");
+    if (totalPaid > 0) {
+      paidRow.classList.remove("hidden");
+      document.getElementById("weekDetailPaid").textContent = fmtMoney(totalPaid);
+    } else {
+      paidRow.classList.add("hidden");
+    }
+
+    document.getElementById("weekDetailCard").scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   document.getElementById("prevMonthBtn").addEventListener("click", function () {
