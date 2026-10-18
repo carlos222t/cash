@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Budget</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --text: #1c1e21;
+    --muted: #6b7280;
+    --border: #e3e5e8;
+    --accent: #2563eb;
+    --accent-dark: #1d4ed8;
+    --good: #15803d;
+    --danger: #dc2626;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  h2 { font-size: 1.05rem; margin: 0 0 12px; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin: 0 0 20px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  input, select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: #fff;
+    color: var(--text);
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .btn {
+    display: inline-block;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn:hover { background: var(--accent-dark); }
+  .btn.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .btn.secondary:hover { background: #eef2ff; }
+  .btn.small { padding: 6px 10px; font-size: 0.82rem; }
+  .btn.danger-outline {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+  .toggle-group { display: flex; gap: 8px; margin-bottom: 16px; }
+  .toggle-group button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    background: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .toggle-group button.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: #eef2ff;
+  }
+  .period-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .period-range { font-weight: 600; font-size: 1rem; }
+  .period-meta { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
+  .earnings {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--good);
+    margin: 6px 0 2px;
+  }
+  .earnings-sub { color: var(--muted); font-size: 0.85rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 7px 4px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
+  .empty-note { color: var(--muted); font-size: 0.88rem; padding: 6px 0; }
+  .top-bar { display: flex; justify-content: space-between; align-items: baseline; }
+  .hidden { display: none !important; }
+  .inline-fields { display: flex; gap: 10px; }
+  .inline-fields .field { flex: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- SETUP VIEW -->
+  <div id="setupView">
+    <h1>Set Up Your Income</h1>
+    <p class="subtitle">Tell us how you get paid. You can change this anytime.</p>
+
+    <div class="card">
+      <h2>Income type</h2>
+      <div class="toggle-group">
+        <button type="button" id="typeSalaryBtn">Salary</button>
+        <button type="button" id="typeHourlyBtn">Hourly</button>
+      </div>
+
+      <div class="field">
+        <label for="payFrequency">How often do you get paid?</label>
+        <select id="payFrequency">
+          <option value="weekly">Weekly</option>
+          <option value="biweekly">Every 2 weeks</option>
+          <option value="semimonthly">Twice a month</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+
+      <div class="field" id="field_weeklyDay">
+        <label for="weeklyDay">Which day of the week do you get paid?</label>
+        <select id="weeklyDay">
+          <option value="0">Sunday</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+        </select>
+      </div>
+
+      <div class="field" id="field_biweeklyAnchor">
+        <label for="biweeklyAnchor">Enter a date you got paid (or will get paid) on</label>
+        <input type="date" id="biweeklyAnchor">
+      </div>
+
+      <div class="field" id="field_semimonthlyDay">
+        <label for="semimonthlyDay">First payday each month (day of month, 1–27). The second payday is assumed to be the last day of the month.</label>
+        <input type="number" id="semimonthlyDay" min="1" max="27" value="15">
+      </div>
+
+      <div class="field" id="field_monthlyDay">
+        <label for="monthlyDay">Payday each month</label>
+        <select id="monthlyDay"></select>
+      </div>
+
+      <div class="field" id="field_salaryAmount">
+        <label for="salaryAmount">Amount you get paid each paycheck ($)</label>
+        <input type="number" id="salaryAmount" min="0" step="0.01" placeholder="e.g. 1500">
+      </div>
+
+      <div class="field" id="field_hourlyWage">
+        <label for="hourlyWage">Your hourly wage ($/hour)</label>
+        <input type="number" id="hourlyWage" min="0" step="0.01" placeholder="e.g. 22.50">
+      </div>
+
+      <button class="btn" id="saveSetupBtn" style="margin-top:6px;">Save</button>
+      <button class="btn secondary hidden" id="cancelSetupBtn" style="margin-top:6px;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD VIEW -->
+  <div id="dashboardView" class="hidden">
+    <div class="top-bar">
+      <div>
+        <h1>My Budget</h1>
+        <p class="subtitle" id="incomeSummary"></p>
+      </div>
+      <button class="btn secondary small" id="editSettingsBtn">Edit settings</button>
+    </div>
+
+    <div class="card">
+      <div class="period-nav">
+        <button class="btn secondary small" id="prevPeriodBtn">&larr; Prev</button>
+        <div style="text-align:center;">
+          <div class="period-range" id="periodRange"></div>
+          <div class="period-meta" id="periodPayday"></div>
+        </div>
+        <button class="btn secondary small" id="nextPeriodBtn">Next &rarr;</button>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border); margin: 14px 0;">
+      <div class="earnings" id="periodEarnings">$0.00</div>
+      <div class="earnings-sub" id="periodEarningsDetail"></div>
+    </div>
+
+    <div class="card" id="hoursCard">
+      <h2>Log hours worked</h2>
+      <div class="inline-fields">
+        <div class="field">
+          <label for="hoursDate">Date</label>
+          <input type="date" id="hoursDate">
+        </div>
+        <div class="field">
+          <label for="hoursAmount">Hours</label>
+          <input type="number" id="hoursAmount" min="0" step="0.25" placeholder="e.g. 8">
+        </div>
+      </div>
+      <div class="field">
+        <label for="hoursNote">Note (optional)</label>
+        <input type="text" id="hoursNote" placeholder="e.g. covered a shift">
+      </div>
+      <button class="btn" id="addHoursBtn">Add hours</button>
+
+      <table id="hoursTable">
+        <thead>
+          <tr><th>Date</th><th>Hours</th><th>Note</th><th></th></tr>
+        </thead>
+        <tbody id="hoursTableBody"></tbody>
+      </table>
+      <div class="empty-note hidden" id="hoursEmptyNote">No hours logged for this pay period yet.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_CONFIG = "budgetApp.incomeConfig";
+  var STORAGE_ENTRIES = "budgetApp.hourEntries";
+
+  var config = loadConfig();
+  var entries = loadEntries();
+  var refDate = startOfDay(new Date()); // drives which pay period is shown
+
+  // ---------- storage ----------
+  function loadConfig() {
+    try {
+      var raw = localStorage.getItem(STORAGE_CONFIG);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function saveConfig(cfg) {
+    config = cfg;
+    localStorage.setItem(STORAGE_CONFIG, JSON.stringify(cfg));
+  }
+  function loadEntries() {
+    try {
+      var raw = localStorage.getItem(STORAGE_ENTRIES);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function saveEntries() {
+    localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(entries));
+  }
+
+  // ---------- date helpers ----------
+  function startOfDay(d) { var r = new Date(d); r.setHours(0,0,0,0); return r; }
+  function addDays(d, n) { var r = new Date(d); r.setDate(r.getDate() + n); return r; }
+  function daysBetween(a, b) { return Math.round((startOfDay(b) - startOfDay(a)) / 86400000); }
+  function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+  function resolveDayInMonth(y, m, day) {
+    // handles month overflow/underflow and "last" sentinel
+    while (m < 0) { m += 12; y -= 1; }
+    while (m > 11) { m -= 12; y += 1; }
+    if (day === "last") return new Date(y, m + 1, 0);
+    var d = Math.min(Number(day), daysInMonth(y, m));
+    return new Date(y, m, d);
+  }
+  function fmtDate(d) {
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+  function toISODate(d) {
+    var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
+    return y + "-" + m + "-" + day;
+  }
+  function fmtMoney(n) {
+    return "$" + (Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // ---------- pay period calculation ----------
+  // Returns {start: Date, end: Date, payday: Date} for the period containing `date`.
+  function computePeriod(cfg, date) {
+    date = startOfDay(date);
+    if (cfg.frequency === "weekly") {
+      var dow = Number(cfg.weeklyDay);
+      var diff = (dow - date.getDay() + 7) % 7;
+      var end = addDays(date, diff);
+      var start = addDays(end, -6);
+      return { start: start, end: end, payday: end };
+    }
+    if (cfg.frequency === "biweekly") {
+      var anchor = startOfDay(new Date(cfg.biweeklyAnchor));
+      var diffDays = daysBetween(anchor, date);
+      var mod = ((diffDays % 14) + 14) % 14;
+      var untilPayday = (14 - mod) % 14;
+      var end2 = addDays(date, untilPayday);
+      var start2 = addDays(end2, -13);
+      return { start: start2, end: end2, payday: end2 };
+    }
+    if (cfg.frequency === "semimonthly") {
+      var y = date.getFullYear(), m = date.getMonth();
+      var day1Date = resolveDayInMonth(y, m, cfg.semimonthlyDay);
+      if (date <= day1Date) {
+        return { start: new Date(y, m, 1), end: day1Date, payday: day1Date };
+      } else {
+        var lastDate = resolveDayInMonth(y, m, "last");
+        return { start: addDays(day1Date, 1), end: lastDate, payday: lastDate };
+      }
+    }
+    if (cfg.frequency === "monthly") {
+      var y2 = date.getFullYear(), m2 = date.getMonth();
+      var candidate = resolveDayInMonth(y2, m2, cfg.monthlyDay);
+      if (date <= candidate) {
+        var prevCandidate = resolveDayInMonth(y2, m2 - 1, cfg.monthlyDay);
+        return { start: addDays(prevCandidate, 1), end: candidate, payday: candidate };
+      } else {
+        var nextCandidate = resolveDayInMonth(y2, m2 + 1, cfg.monthlyDay);
+        return { start: addDays(candidate, 1), end: nextCandidate, payday: nextCandidate };
+      }
+    }
+    throw new Error("Unknown frequency");
+  }
+
+  // ---------- setup view wiring ----------
+  var typeSalaryBtn = document.getElementById("typeSalaryBtn");
+  var typeHourlyBtn = document.getElementById("typeHourlyBtn");
+  var selectedType = "salary";
+
+  var monthlyDaySelect = document.getElementById("monthlyDay");
+  for (var i = 1; i <= 31; i++) {
+    var opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = ordinal(i);
+    monthlyDaySelect.appendChild(opt);
+  }
+  var lastOpt = document.createElement("option");
+  lastOpt.value = "last";
+  lastOpt.textContent = "Last day of month";
+  monthlyDaySelect.appendChild(lastOpt);
+
+  function ordinal(n) {
+    var s = ["th", "st", "nd", "rd"], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+
+  function setType(t) {
+    selectedType = t;
+    typeSalaryBtn.classList.toggle("active", t === "salary");
+    typeHourlyBtn.classList.toggle("active", t === "hourly");
+    document.getElementById("field_salaryAmount").classList.toggle("hidden", t !== "salary");
+    document.getElementById("field_hourlyWage").classList.toggle("hidden", t !== "hourly");
+  }
+  typeSalaryBtn.addEventListener("click", function () { setType("salary"); });
+  typeHourlyBtn.addEventListener("click", function () { setType("hourly"); });
+
+  var payFrequencySelect = document.getElementById("payFrequency");
+  function updateFrequencyFields() {
+    var f = payFrequencySelect.value;
+    document.getElementById("field_weeklyDay").classList.toggle("hidden", f !== "weekly");
+    document.getElementById("field_biweeklyAnchor").classList.toggle("hidden", f !== "biweekly");
+    document.getElementById("field_semimonthlyDay").classList.toggle("hidden", f !== "semimonthly");
+    document.getElementById("field_monthlyDay").classList.toggle("hidden", f !== "monthly");
+  }
+  payFrequencySelect.addEventListener("change", updateFrequencyFields);
+
+  document.getElementById("saveSetupBtn").addEventListener("click", function () {
+    var frequency = payFrequencySelect.value;
+    var cfg = { type: selectedType, frequency: frequency };
+
+    if (frequency === "weekly") cfg.weeklyDay = document.getElementById("weeklyDay").value;
+    if (frequency === "biweekly") {
+      var anchorVal = document.getElementById("biweeklyAnchor").value;
+      if (!anchorVal) { alert("Please enter a payday date."); return; }
+      cfg.biweeklyAnchor = anchorVal;
+    }
+    if (frequency === "semimonthly") {
+      var sday = Number(document.getElementById("semimonthlyDay").value);
+      if (!sday || sday < 1 || sday > 27) { alert("Enter a day of month between 1 and 27."); return; }
+      cfg.semimonthlyDay = sday;
+    }
+    if (frequency === "monthly") cfg.monthlyDay = monthlyDaySelect.value;
+
+    if (selectedType === "salary") {
+      var amt = Number(document.getElementById("salaryAmount").value);
+      if (!amt || amt <= 0) { alert("Enter the amount you get paid each paycheck."); return; }
+      cfg.salaryAmount = amt;
+    } else {
+      var wage = Number(document.getElementById("hourlyWage").value);
+      if (!wage || wage <= 0) { alert("Enter your hourly wage."); return; }
+      cfg.hourlyWage = wage;
+    }
+
+    saveConfig(cfg);
+    refDate = startOfDay(new Date());
+    showDashboard();
+  });
+
+  document.getElementById("cancelSetupBtn").addEventListener("click", function () {
+    if (config) showDashboard();
+  });
+
+  function populateSetupForm(cfg) {
+    setType(cfg.type);
+    payFrequencySelect.value = cfg.frequency;
+    updateFrequencyFields();
+    if (cfg.frequency === "weekly") document.getElementById("weeklyDay").value = cfg.weeklyDay;
+    if (cfg.frequency === "biweekly") document.getElementById("biweeklyAnchor").value = cfg.biweeklyAnchor;
+    if (cfg.frequency === "semimonthly") document.getElementById("semimonthlyDay").value = cfg.semimonthlyDay;
+    if (cfg.frequency === "monthly") monthlyDaySelect.value = cfg.monthlyDay;
+    if (cfg.type === "salary") document.getElementById("salaryAmount").value = cfg.salaryAmount;
+    else document.getElementById("hourlyWage").value = cfg.hourlyWage;
+  }
+
+  // ---------- dashboard view wiring ----------
+  var setupView = document.getElementById("setupView");
+  var dashboardView = document.getElementById("dashboardView");
+
+  function showSetup(forEdit) {
+    setupView.classList.remove("hidden");
+    dashboardView.classList.add("hidden");
+    document.getElementById("cancelSetupBtn").classList.toggle("hidden", !forEdit);
+    if (forEdit && config) populateSetupForm(config);
+    else setType("salary");
+  }
+
+  function showDashboard() {
+    setupView.classList.add("hidden");
+    dashboardView.classList.remove("hidden");
+    renderDashboard();
+  }
+
+  document.getElementById("editSettingsBtn").addEventListener("click", function () { showSetup(true); });
+
+  var frequencyLabels = {
+    weekly: "Weekly", biweekly: "Every 2 weeks", semimonthly: "Twice a month", monthly: "Monthly"
+  };
+
+  function renderDashboard() {
+    var period = computePeriod(config, refDate);
+
+    document.getElementById("incomeSummary").textContent =
+      (config.type === "salary" ? "Salary" : "Hourly") + " · " + frequencyLabels[config.frequency] +
+      (config.type === "hourly" ? " · " + fmtMoney(config.hourlyWage) + "/hr" : "");
+
+    document.getElementById("periodRange").textContent = fmtDate(period.start) + " – " + fmtDate(period.end);
+    document.getElementById("periodPayday").textContent = "Payday: " + fmtDate(period.payday);
+
+    var hoursCard = document.getElementById("hoursCard");
+    if (config.type === "salary") {
+      hoursCard.classList.add("hidden");
+      document.getElementById("periodEarnings").textContent = fmtMoney(config.salaryAmount);
+      document.getElementById("periodEarningsDetail").textContent = "Fixed amount for this pay period";
+    } else {
+      hoursCard.classList.remove("hidden");
+      var periodEntries = entries.filter(function (e) {
+        var d = startOfDay(new Date(e.date));
+        return d >= period.start && d <= period.end;
+      }).sort(function (a, b) { return a.date.localeCompare(b.date); });
+
+      var totalHours = periodEntries.reduce(function (sum, e) { return sum + Number(e.hours); }, 0);
+      var totalPay = totalHours * config.hourlyWage;
+
+      document.getElementById("periodEarnings").textContent = fmtMoney(totalPay);
+      document.getElementById("periodEarningsDetail").textContent =
+        totalHours + " hour" + (totalHours === 1 ? "" : "s") + " × " + fmtMoney(config.hourlyWage) + "/hr";
+
+      var tbody = document.getElementById("hoursTableBody");
+      tbody.innerHTML = "";
+      periodEntries.forEach(function (e) {
+        var tr = document.createElement("tr");
+        var dateTd = document.createElement("td");
+        dateTd.textContent = fmtDate(new Date(e.date));
+        var hoursTd = document.createElement("td");
+        hoursTd.textContent = e.hours;
+        var noteTd = document.createElement("td");
+        noteTd.textContent = e.note || "";
+        var actionTd = document.createElement("td");
+        var delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.className = "btn danger-outline small";
+        delBtn.addEventListener("click", function () {
+          entries = entries.filter(function (x) { return x.id !== e.id; });
+          saveEntries();
+          renderDashboard();
+        });
+        actionTd.appendChild(delBtn);
+        tr.appendChild(dateTd); tr.appendChild(hoursTd); tr.appendChild(noteTd); tr.appendChild(actionTd);
+        tbody.appendChild(tr);
+      });
+      document.getElementById("hoursEmptyNote").classList.toggle("hidden", periodEntries.length > 0);
+      document.getElementById("hoursTable").classList.toggle("hidden", periodEntries.length === 0);
+    }
+  }
+
+  document.getElementById("prevPeriodBtn").addEventListener("click", function () {
+    var period = computePeriod(config, refDate);
+    refDate = addDays(period.start, -1);
+    renderDashboard();
+  });
+  document.getElementById("nextPeriodBtn").addEventListener("click", function () {
+    var period = computePeriod(config, refDate);
+    refDate = addDays(period.end, 1);
+    renderDashboard();
+  });
+
+  document.getElementById("addHoursBtn").addEventListener("click", function () {
+    var dateVal = document.getElementById("hoursDate").value;
+    var hoursVal = Number(document.getElementById("hoursAmount").value);
+    var note = document.getElementById("hoursNote").value.trim();
+    if (!dateVal) { alert("Pick a date."); return; }
+    if (!hoursVal || hoursVal <= 0) { alert("Enter the hours worked."); return; }
+    entries.push({ id: Date.now() + "-" + Math.random().toString(36).slice(2), date: dateVal, hours: hoursVal, note: note });
+    saveEntries();
+    document.getElementById("hoursAmount").value = "";
+    document.getElementById("hoursNote").value = "";
+    renderDashboard();
+  });
+
+  // ---------- init ----------
+  document.getElementById("hoursDate").value = toISODate(new Date());
+  updateFrequencyFields();
+  setType("salary");
+
+  if (config) showDashboard();
+  else showSetup(false);
+})();
+</script>
+</body>
+</html>
