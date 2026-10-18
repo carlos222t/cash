@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Budget</title>
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem("budgetApp.theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  })();
+</script>
 <style>
   :root {
     --bg: #f6f6f3;
@@ -14,11 +22,59 @@
     --accent: #2f6e52;
     --accent-dark: #23553f;
     --accent-soft: #e8f1ec;
+    --accent-soft-hover: #dcebe3;
+    --danger-soft: #fbeeec;
+    --danger-soft-hover: #f6ddd9;
     --good: #2f6e52;
     --danger: #b8463a;
     --warning: #b8862f;
+    --input-bg: #fbfbfa;
+    --input-bg-focus: #ffffff;
+    --toggle-bg: #eeeeec;
     --radius: 18px;
     --shadow: 0 1px 2px rgba(20, 20, 20, 0.04), 0 4px 16px rgba(20, 20, 20, 0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a;
+      --card: #1d2024;
+      --text: #eceef0;
+      --muted: #949ba4;
+      --border: #2b2f35;
+      --accent: #4fae80;
+      --accent-dark: #3f8f68;
+      --accent-soft: #1d3328;
+      --accent-soft-hover: #234233;
+      --danger-soft: #3a2422;
+      --danger-soft-hover: #452b28;
+      --good: #4fae80;
+      --danger: #e2756a;
+      --warning: #d9a24f;
+      --input-bg: #22262b;
+      --input-bg-focus: #262b31;
+      --toggle-bg: #24272c;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a;
+    --card: #1d2024;
+    --text: #eceef0;
+    --muted: #949ba4;
+    --border: #2b2f35;
+    --accent: #4fae80;
+    --accent-dark: #3f8f68;
+    --accent-soft: #1d3328;
+    --accent-soft-hover: #234233;
+    --danger-soft: #3a2422;
+    --danger-soft-hover: #452b28;
+    --good: #4fae80;
+    --danger: #e2756a;
+    --warning: #d9a24f;
+    --input-bg: #22262b;
+    --input-bg-focus: #262b31;
+    --toggle-bg: #24272c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.45);
   }
   * { box-sizing: border-box; }
   body {
@@ -55,10 +111,10 @@
     border: 1px solid var(--border);
     border-radius: 10px;
     font-size: 0.95rem;
-    background: #fbfbfa;
+    background: var(--input-bg);
     color: var(--text);
   }
-  input:focus, select:focus { outline: none; border-color: var(--accent); background: #fff; box-shadow: 0 0 0 3px var(--accent-soft); }
+  input:focus, select:focus { outline: none; border-color: var(--accent); background: var(--input-bg-focus); box-shadow: 0 0 0 3px var(--accent-soft); }
   .btn {
     display: inline-block;
     padding: 11px 18px;
@@ -78,16 +134,16 @@
     color: var(--accent-dark);
     border: none;
   }
-  .btn.secondary:hover { background: #dcebe3; }
+  .btn.secondary:hover { background: var(--accent-soft-hover); }
   .btn.secondary.active { background: var(--accent); color: #fff; }
   .btn.small { padding: 7px 12px; font-size: 0.82rem; border-radius: 10px; }
   .btn.danger-outline {
-    background: #fbeeec;
+    background: var(--danger-soft);
     color: var(--danger);
     border: none;
   }
-  .btn.danger-outline:hover { background: #f6ddd9; }
-  .toggle-group { display: flex; gap: 8px; margin-bottom: 16px; background: #eeeeec; padding: 4px; border-radius: 14px; }
+  .btn.danger-outline:hover { background: var(--danger-soft-hover); }
+  .toggle-group { display: flex; gap: 8px; margin-bottom: 16px; background: var(--toggle-bg); padding: 4px; border-radius: 14px; }
   .toggle-group button {
     flex: 1;
     padding: 10px;
@@ -102,8 +158,25 @@
   }
   .toggle-group button.active {
     color: var(--text);
-    background: #fff;
+    background: var(--card);
     box-shadow: var(--shadow);
+  }
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: var(--card);
+    box-shadow: var(--shadow);
+    font-size: 1.15rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
   }
   .period-nav {
     display: flex;
@@ -174,9 +247,34 @@
   .cal-day .cal-paid { color: var(--good); font-weight: 700; }
   .legend-row { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
   .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border); flex-shrink: 0; }
+  #welcomeSplash {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+  }
+  #welcomeSplash.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+  .splash-content { text-align: center; animation: splashPop 0.6s ease; }
+  .splash-logo { font-size: 2.6rem; margin-bottom: 10px; }
+  .splash-text { font-size: 1.3rem; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+  @keyframes splashPop {
+    0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
 </style>
 </head>
 <body>
+<div id="welcomeSplash">
+  <div class="splash-content">
+    <div class="splash-logo">💰</div>
+    <div class="splash-text" id="welcomeSplashText">Welcome</div>
+  </div>
+</div>
+<button type="button" class="theme-toggle" id="themeToggleBtn" aria-label="Toggle dark mode">🌙</button>
 <div class="wrap">
 
   <div class="toggle-group hidden" id="tabBar">
@@ -1366,6 +1464,32 @@
     calendarRefDate = new Date(calendarRefDate.getFullYear(), calendarRefDate.getMonth() + 1, 1);
     renderCalendar();
   });
+
+  // ---------- theme toggle ----------
+  var THEME_KEY = "budgetApp.theme";
+  function currentEffectiveTheme() {
+    var attr = document.documentElement.getAttribute("data-theme");
+    if (attr === "light" || attr === "dark") return attr;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function updateThemeToggleIcon() {
+    document.getElementById("themeToggleBtn").textContent = currentEffectiveTheme() === "dark" ? "☀️" : "🌙";
+  }
+  document.getElementById("themeToggleBtn").addEventListener("click", function () {
+    var next = currentEffectiveTheme() === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    updateThemeToggleIcon();
+  });
+  updateThemeToggleIcon();
+
+  // ---------- welcome splash ----------
+  document.getElementById("welcomeSplashText").textContent = config ? "Welcome back" : "Welcome";
+  setTimeout(function () {
+    var splash = document.getElementById("welcomeSplash");
+    splash.classList.add("fade-out");
+    setTimeout(function () { splash.style.display = "none"; }, 550);
+  }, 1100);
 
   // ---------- init ----------
   document.querySelectorAll('input[type="date"]').forEach(function (input) {
