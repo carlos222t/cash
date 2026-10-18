@@ -189,6 +189,31 @@
     </div>
   </div>
 
+  <!-- BUDGET SETUP VIEW -->
+  <div id="budgetView" class="hidden">
+    <h1>Set Up Your Budget</h1>
+    <p class="subtitle">Pick a starting point, then adjust categories as you like.</p>
+
+    <div class="card">
+      <h2>Quick presets</h2>
+      <div class="toggle-group" style="flex-wrap:wrap;">
+        <button type="button" class="btn secondary small" id="preset503020" style="flex:1 1 30%;">50/30/20 Rule</button>
+        <button type="button" class="btn secondary small" id="presetSavingFocus" style="flex:1 1 30%;">Saving Focus</button>
+        <button type="button" class="btn secondary small" id="presetNonSavingFocus" style="flex:1 1 30%;">Non-Saving Focus</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Categories</h2>
+      <div id="categoryRows"></div>
+      <button type="button" class="btn secondary small" id="addCategoryBtn">+ Add category</button>
+      <div class="period-meta" id="budgetDraftSummary" style="margin-top:14px;"></div>
+    </div>
+
+    <button class="btn" id="saveBudgetBtn" style="margin-top:6px;">Save budget</button>
+    <button class="btn secondary hidden" id="cancelBudgetBtn" style="margin-top:6px;">Cancel</button>
+  </div>
+
   <!-- DASHBOARD VIEW -->
   <div id="dashboardView" class="hidden">
     <div class="top-bar">
@@ -196,7 +221,10 @@
         <h1>My Budget</h1>
         <p class="subtitle" id="incomeSummary"></p>
       </div>
-      <button class="btn secondary small" id="editSettingsBtn">Edit settings</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn secondary small" id="editBudgetBtn">Edit budget</button>
+        <button class="btn secondary small" id="editSettingsBtn">Edit settings</button>
+      </div>
     </div>
 
     <div class="card">
@@ -211,6 +239,18 @@
       <hr style="border:none;border-top:1px solid var(--border); margin: 14px 0;">
       <div class="earnings" id="periodEarnings">$0.00</div>
       <div class="earnings-sub" id="periodEarningsDetail"></div>
+    </div>
+
+    <div class="card" id="budgetCard">
+      <h2>Budget for this period</h2>
+      <table id="budgetTable">
+        <thead>
+          <tr><th>Category</th><th>Type</th><th>Allocated</th></tr>
+        </thead>
+        <tbody id="budgetTableBody"></tbody>
+      </table>
+      <div class="empty-note hidden" id="budgetEmptyNote">No budget set yet.</div>
+      <div class="period-meta" id="budgetDashboardSummary" style="margin-top:10px;"></div>
     </div>
 
     <div class="card" id="hoursCard">
@@ -249,6 +289,7 @@
 
   var STORAGE_CONFIG = "budgetApp.incomeConfig";
   var STORAGE_ENTRIES = "budgetApp.hourEntries";
+  var STORAGE_BUDGET = "budgetApp.budgetConfig";
 
   var config = loadConfig();
   var entries = loadEntries();
@@ -274,6 +315,16 @@
   function saveEntries() {
     localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(entries));
   }
+  function loadBudgetConfig() {
+    try {
+      var raw = localStorage.getItem(STORAGE_BUDGET);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function saveBudgetConfig(cfg) {
+    localStorage.setItem(STORAGE_BUDGET, JSON.stringify(cfg));
+  }
+  function genId() { return Date.now() + "-" + Math.random().toString(36).slice(2); }
 
   // ---------- date helpers ----------
   function startOfDay(d) { var r = new Date(d); r.setHours(0,0,0,0); return r; }
@@ -361,6 +412,147 @@
     throw new Error("Unknown frequency");
   }
 
+  // ---------- budget presets & categories ----------
+  var BUDGET_PRESETS = {
+    fiftyThirtyTwenty: [
+      { name: "Needs", mode: "percent", value: 50 },
+      { name: "Wants", mode: "percent", value: 30 },
+      { name: "Savings", mode: "percent", value: 20 }
+    ],
+    savingFocus: [
+      { name: "Needs", mode: "percent", value: 40 },
+      { name: "Wants", mode: "percent", value: 20 },
+      { name: "Savings", mode: "percent", value: 40 }
+    ],
+    nonSavingFocus: [
+      { name: "Needs", mode: "percent", value: 60 },
+      { name: "Wants", mode: "percent", value: 40 },
+      { name: "Savings", mode: "percent", value: 0 }
+    ]
+  };
+
+  function categoryAmount(cat, income) {
+    if (cat.mode === "percent") return income * (Number(cat.value) || 0) / 100;
+    return Number(cat.value) || 0;
+  }
+
+  function computePeriodIncome(period) {
+    if (config.type === "salary") return config.salaryAmount;
+    var periodEntries = entries.filter(function (e) {
+      var d = startOfDay(new Date(e.date));
+      return d >= period.start && d <= period.end;
+    });
+    var totalHours = periodEntries.reduce(function (sum, e) { return sum + Number(e.hours); }, 0);
+    return totalHours * config.hourlyWage;
+  }
+
+  var draftCategories = [];
+  var categoryRowsEl = document.getElementById("categoryRows");
+
+  function applyPreset(key) {
+    draftCategories = BUDGET_PRESETS[key].map(function (c) {
+      return { id: genId(), name: c.name, mode: c.mode, value: c.value };
+    });
+    renderCategoryRows();
+  }
+
+  function renderCategoryRows() {
+    categoryRowsEl.innerHTML = "";
+    draftCategories.forEach(function (cat, idx) {
+      var row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.style.alignItems = "flex-end";
+      row.style.marginBottom = "10px";
+
+      var nameField = document.createElement("div");
+      nameField.className = "field"; nameField.style.flex = "2"; nameField.style.marginBottom = "0";
+      var nameLabel = document.createElement("label"); nameLabel.textContent = "Category";
+      var nameInput = document.createElement("input");
+      nameInput.type = "text"; nameInput.value = cat.name; nameInput.placeholder = "e.g. Rent";
+      nameInput.addEventListener("input", function () { cat.name = nameInput.value; });
+      nameField.appendChild(nameLabel); nameField.appendChild(nameInput);
+
+      var modeField = document.createElement("div");
+      modeField.className = "field"; modeField.style.flex = "1"; modeField.style.marginBottom = "0";
+      var modeLabel = document.createElement("label"); modeLabel.textContent = "Type";
+      var modeSelect = document.createElement("select");
+      var pOpt = document.createElement("option"); pOpt.value = "percent"; pOpt.textContent = "% of income";
+      var fOpt = document.createElement("option"); fOpt.value = "fixed"; fOpt.textContent = "$ fixed";
+      modeSelect.appendChild(pOpt); modeSelect.appendChild(fOpt);
+      modeSelect.value = cat.mode;
+      modeField.appendChild(modeLabel); modeField.appendChild(modeSelect);
+
+      var valueField = document.createElement("div");
+      valueField.className = "field"; valueField.style.flex = "1"; valueField.style.marginBottom = "0";
+      var valueLabel = document.createElement("label");
+      valueLabel.textContent = cat.mode === "percent" ? "Percent" : "Amount ($)";
+      var valueInput = document.createElement("input");
+      valueInput.type = "number"; valueInput.min = "0";
+      valueInput.step = cat.mode === "percent" ? "1" : "0.01";
+      valueInput.value = cat.value;
+      valueInput.addEventListener("input", function () {
+        cat.value = Number(valueInput.value) || 0;
+        updateBudgetDraftSummary();
+      });
+      valueField.appendChild(valueLabel); valueField.appendChild(valueInput);
+
+      modeSelect.addEventListener("change", function () {
+        cat.mode = modeSelect.value;
+        valueLabel.textContent = cat.mode === "percent" ? "Percent" : "Amount ($)";
+        valueInput.step = cat.mode === "percent" ? "1" : "0.01";
+        updateBudgetDraftSummary();
+      });
+
+      var delBtn = document.createElement("button");
+      delBtn.type = "button"; delBtn.className = "btn danger-outline small"; delBtn.textContent = "Remove";
+      delBtn.style.marginBottom = "0";
+      delBtn.addEventListener("click", function () {
+        draftCategories.splice(idx, 1);
+        renderCategoryRows();
+      });
+
+      row.appendChild(nameField); row.appendChild(modeField); row.appendChild(valueField); row.appendChild(delBtn);
+      categoryRowsEl.appendChild(row);
+    });
+    updateBudgetDraftSummary();
+  }
+
+  function updateBudgetDraftSummary() {
+    var period = computePeriod(config, startOfDay(new Date()));
+    var income = computePeriodIncome(period);
+    var total = draftCategories.reduce(function (sum, c) { return sum + categoryAmount(c, income); }, 0);
+    var remaining = income - total;
+    document.getElementById("budgetDraftSummary").textContent =
+      "Allocated " + fmtMoney(total) + " of " + fmtMoney(income) + " for the current pay period — " +
+      (remaining >= 0 ? fmtMoney(remaining) + " unallocated" : fmtMoney(Math.abs(remaining)) + " over budget");
+  }
+
+  document.getElementById("preset503020").addEventListener("click", function () { applyPreset("fiftyThirtyTwenty"); });
+  document.getElementById("presetSavingFocus").addEventListener("click", function () { applyPreset("savingFocus"); });
+  document.getElementById("presetNonSavingFocus").addEventListener("click", function () { applyPreset("nonSavingFocus"); });
+  document.getElementById("addCategoryBtn").addEventListener("click", function () {
+    draftCategories.push({ id: genId(), name: "", mode: "percent", value: 0 });
+    renderCategoryRows();
+  });
+
+  document.getElementById("saveBudgetBtn").addEventListener("click", function () {
+    for (var i = 0; i < draftCategories.length; i++) {
+      var c = draftCategories[i];
+      if (!c.name || !c.name.trim()) { alert("Give every category a name."); return; }
+      if (c.value == null || isNaN(c.value) || c.value < 0) { alert("Enter a valid amount for " + c.name + "."); return; }
+    }
+    var cleaned = draftCategories.map(function (c) {
+      return { id: c.id, name: c.name.trim(), mode: c.mode, value: Number(c.value) };
+    });
+    saveBudgetConfig({ categories: cleaned });
+    showDashboard();
+  });
+
+  document.getElementById("cancelBudgetBtn").addEventListener("click", function () {
+    if (loadBudgetConfig()) showDashboard();
+  });
+
   // ---------- setup view wiring ----------
   var typeSalaryBtn = document.getElementById("typeSalaryBtn");
   var typeHourlyBtn = document.getElementById("typeHourlyBtn");
@@ -445,7 +637,8 @@
 
     saveConfig(cfg);
     refDate = startOfDay(new Date());
-    showDashboard();
+    if (loadBudgetConfig()) showDashboard();
+    else showBudgetSetup(false);
   });
 
   document.getElementById("cancelSetupBtn").addEventListener("click", function () {
@@ -466,23 +659,42 @@
 
   // ---------- dashboard view wiring ----------
   var setupView = document.getElementById("setupView");
+  var budgetView = document.getElementById("budgetView");
   var dashboardView = document.getElementById("dashboardView");
 
-  function showSetup(forEdit) {
-    setupView.classList.remove("hidden");
+  function hideAllViews() {
+    setupView.classList.add("hidden");
+    budgetView.classList.add("hidden");
     dashboardView.classList.add("hidden");
+  }
+
+  function showSetup(forEdit) {
+    hideAllViews();
+    setupView.classList.remove("hidden");
     document.getElementById("cancelSetupBtn").classList.toggle("hidden", !forEdit);
     if (forEdit && config) populateSetupForm(config);
     else setType("salary");
   }
 
+  function showBudgetSetup(forEdit) {
+    hideAllViews();
+    budgetView.classList.remove("hidden");
+    document.getElementById("cancelBudgetBtn").classList.toggle("hidden", !forEdit);
+    var saved = loadBudgetConfig();
+    draftCategories = (forEdit && saved) ? saved.categories.map(function (c) {
+      return { id: c.id || genId(), name: c.name, mode: c.mode, value: c.value };
+    }) : [];
+    renderCategoryRows();
+  }
+
   function showDashboard() {
-    setupView.classList.add("hidden");
+    hideAllViews();
     dashboardView.classList.remove("hidden");
     renderDashboard();
   }
 
   document.getElementById("editSettingsBtn").addEventListener("click", function () { showSetup(true); });
+  document.getElementById("editBudgetBtn").addEventListener("click", function () { showBudgetSetup(true); });
 
   var frequencyLabels = {
     weekly: "Weekly", biweekly: "Every 2 weeks", semimonthly: "Twice a month", monthly: "Monthly"
@@ -499,9 +711,10 @@
     document.getElementById("periodPayday").textContent = "Payday: " + fmtDate(period.payday);
 
     var hoursCard = document.getElementById("hoursCard");
+    var periodIncome = computePeriodIncome(period);
     if (config.type === "salary") {
       hoursCard.classList.add("hidden");
-      document.getElementById("periodEarnings").textContent = fmtMoney(config.salaryAmount);
+      document.getElementById("periodEarnings").textContent = fmtMoney(periodIncome);
       document.getElementById("periodEarningsDetail").textContent = "Fixed amount for this pay period";
     } else {
       hoursCard.classList.remove("hidden");
@@ -511,9 +724,8 @@
       }).sort(function (a, b) { return a.date.localeCompare(b.date); });
 
       var totalHours = periodEntries.reduce(function (sum, e) { return sum + Number(e.hours); }, 0);
-      var totalPay = totalHours * config.hourlyWage;
 
-      document.getElementById("periodEarnings").textContent = fmtMoney(totalPay);
+      document.getElementById("periodEarnings").textContent = fmtMoney(periodIncome);
       document.getElementById("periodEarningsDetail").textContent =
         totalHours + " hour" + (totalHours === 1 ? "" : "s") + " × " + fmtMoney(config.hourlyWage) + "/hr";
 
@@ -545,6 +757,36 @@
       document.getElementById("hoursEmptyNote").classList.toggle("hidden", periodEntries.length > 0);
       document.getElementById("hoursTable").classList.toggle("hidden", periodEntries.length === 0);
     }
+
+    renderBudgetCard(periodIncome);
+  }
+
+  function renderBudgetCard(income) {
+    var saved = loadBudgetConfig();
+    var tbody = document.getElementById("budgetTableBody");
+    tbody.innerHTML = "";
+    if (!saved || !saved.categories.length) {
+      document.getElementById("budgetEmptyNote").classList.remove("hidden");
+      document.getElementById("budgetTable").classList.add("hidden");
+      document.getElementById("budgetDashboardSummary").textContent = "";
+      return;
+    }
+    document.getElementById("budgetEmptyNote").classList.add("hidden");
+    document.getElementById("budgetTable").classList.remove("hidden");
+    var total = 0;
+    saved.categories.forEach(function (cat) {
+      var amt = categoryAmount(cat, income);
+      total += amt;
+      var tr = document.createElement("tr");
+      var nameTd = document.createElement("td"); nameTd.textContent = cat.name;
+      var typeTd = document.createElement("td"); typeTd.textContent = cat.mode === "percent" ? (cat.value + "%") : "Fixed";
+      var amtTd = document.createElement("td"); amtTd.textContent = fmtMoney(amt);
+      tr.appendChild(nameTd); tr.appendChild(typeTd); tr.appendChild(amtTd);
+      tbody.appendChild(tr);
+    });
+    var remaining = income - total;
+    document.getElementById("budgetDashboardSummary").textContent =
+      remaining >= 0 ? fmtMoney(remaining) + " unallocated this period" : fmtMoney(Math.abs(remaining)) + " over budget this period";
   }
 
   document.getElementById("prevPeriodBtn").addEventListener("click", function () {
@@ -578,8 +820,12 @@
   updateFrequencyFields();
   setType("salary");
 
-  if (config) showDashboard();
-  else showSetup(false);
+  if (config) {
+    if (loadBudgetConfig()) showDashboard();
+    else showBudgetSetup(false);
+  } else {
+    showSetup(false);
+  }
 })();
 </script>
 </body>
