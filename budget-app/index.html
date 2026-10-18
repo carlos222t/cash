@@ -207,16 +207,40 @@
   .collapsible { margin-bottom: 14px; padding-top: 2px; }
   .overview-top { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
   .ring-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .ring-wrap { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
-  .ring-wrap svg { width: 110px; height: 110px; }
-  .ring-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 700; }
-  .ring-caption { font-size: 0.78rem; color: var(--muted); }
+  .ring-wrap { position: relative; width: 150px; height: 150px; flex-shrink: 0; }
+  .ring-wrap svg { width: 150px; height: 150px; }
+  .ring-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; font-weight: 800; }
+  .ring-caption { font-size: 0.82rem; color: var(--muted); }
   .stats-col { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 16px; }
   .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
   .stat-label { font-size: 0.82rem; color: var(--muted); }
   .stat-value { font-weight: 700; font-size: 1.05rem; }
+  .balance-value { font-size: 2rem; font-weight: 800; margin: 2px 0 0; }
+  .balance-delta { font-size: 0.88rem; font-weight: 600; margin: 2px 0 8px; }
   .balance-edit-row { display: flex; gap: 8px; margin-top: 6px; }
   .balance-edit-row input { width: auto; flex: 1; }
+  .progress-track { background: var(--toggle-bg); border-radius: 999px; height: 10px; overflow: hidden; }
+  .progress-fill { background: var(--accent); height: 100%; border-radius: 999px; transition: width 0.2s ease; }
+  .goal-item-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .goal-item-row:last-child { border-bottom: none; }
+  .goal-item-row input[type="checkbox"] {
+    width: 19px;
+    height: 19px;
+    flex-shrink: 0;
+    padding: 0;
+    border-radius: 5px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .goal-item-name { flex: 1; font-size: 0.92rem; }
+  .goal-item-cost { color: var(--muted); font-size: 0.88rem; white-space: nowrap; }
   .calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
   .calendar-weekdays { margin-top: 14px; font-size: 0.7rem; color: var(--muted); text-align: center; font-weight: 600; }
   .calendar-grid { margin-top: 4px; }
@@ -259,7 +283,20 @@
   }
   #welcomeSplash.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
   .splash-content { text-align: center; animation: splashPop 0.6s ease; }
-  .splash-logo { font-size: 2.6rem; margin-bottom: 10px; }
+  .splash-logo {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 10px;
+    background-color: var(--text);
+    -webkit-mask-image: url('logocash.png');
+    mask-image: url('logocash.png');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+  }
   .splash-text { font-size: 1.3rem; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
   @keyframes splashPop {
     0% { opacity: 0; transform: translateY(8px) scale(0.96); }
@@ -270,7 +307,7 @@
 <body>
 <div id="welcomeSplash">
   <div class="splash-content">
-    <div class="splash-logo">💰</div>
+    <div class="splash-logo" role="img" aria-label="My Budget logo"></div>
     <div class="splash-text" id="welcomeSplashText">Welcome</div>
   </div>
 </div>
@@ -279,6 +316,7 @@
 
   <div class="toggle-group hidden" id="tabBar">
     <button type="button" id="tabHomeBtn">Home</button>
+    <button type="button" id="tabGoalsBtn">Goals</button>
     <button type="button" id="tabCalendarBtn">Calendar</button>
   </div>
 
@@ -403,10 +441,9 @@
             <span class="stat-value" id="nextPaycheckValue"></span>
           </div>
           <div>
-            <div class="stat-row">
-              <span class="stat-label">Account balance</span>
-              <span class="stat-value" id="accountBalanceValue"></span>
-            </div>
+            <span class="stat-label">Account balance</span>
+            <div class="balance-value" id="accountBalanceValue"></div>
+            <div class="balance-delta" id="accountBalanceDelta"></div>
             <div class="balance-edit-row">
               <input type="number" id="balanceEditInput" step="0.01">
               <button type="button" class="btn secondary small" id="saveBalanceBtn">Update</button>
@@ -414,6 +451,15 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="card" id="homeGoalsCard">
+      <div class="card-header-row">
+        <h2>Goals</h2>
+        <button type="button" class="btn secondary small" id="viewGoalsBtn">View goals</button>
+      </div>
+      <div id="homeGoalsList"></div>
+      <div class="empty-note hidden" id="homeGoalsEmptyNote">No goals yet — add one in the Goals tab.</div>
     </div>
 
     <div class="card">
@@ -511,6 +557,37 @@
     </div>
   </div>
 
+  <!-- GOALS VIEW -->
+  <div id="goalsView" class="hidden">
+    <div class="top-bar">
+      <div>
+        <h1>Goals</h1>
+        <p class="subtitle">Save toward something specific, and check off items as you get them.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header-row">
+        <h2>New goal</h2>
+        <button type="button" class="btn secondary small" id="toggleGoalFormBtn">+ Add goal</button>
+      </div>
+      <div class="collapsible hidden" id="goalFormWrap">
+        <div class="field">
+          <label for="goalName">Goal name</label>
+          <input type="text" id="goalName" placeholder="e.g. Snowboarding gear">
+        </div>
+        <div class="field">
+          <label for="goalTotal">Total price ($)</label>
+          <input type="number" id="goalTotal" min="0" step="0.01" placeholder="e.g. 1000">
+        </div>
+        <button class="btn" id="addGoalBtn">Save goal</button>
+      </div>
+    </div>
+
+    <div id="goalsList"></div>
+    <div class="empty-note hidden" id="goalsEmptyNote">No goals yet — add one above.</div>
+  </div>
+
   <!-- CALENDAR VIEW -->
   <div id="calendarView" class="hidden">
     <div class="top-bar">
@@ -570,11 +647,14 @@
   var STORAGE_ENTRIES = "budgetApp.hourEntries";
   var STORAGE_BUDGET = "budgetApp.budgetConfig";
   var STORAGE_BALANCE = "budgetApp.accountBalance";
+  var STORAGE_PREV_BALANCE = "budgetApp.previousBalance";
   var STORAGE_EXPENSES = "budgetApp.expenses";
+  var STORAGE_GOALS = "budgetApp.goals";
 
   var config = loadConfig();
   var entries = loadEntries();
   var accountBalance = loadBalance();
+  var previousBalance = loadPreviousBalance();
   var expenses = loadExpenses();
   var refDate = startOfDay(new Date()); // drives which pay period is shown
 
@@ -616,6 +696,21 @@
   function saveBalance() {
     localStorage.setItem(STORAGE_BALANCE, String(accountBalance));
   }
+  function loadPreviousBalance() {
+    try {
+      var raw = localStorage.getItem(STORAGE_PREV_BALANCE);
+      return raw !== null ? Number(raw) : accountBalance;
+    } catch (e) { return accountBalance; }
+  }
+  function savePreviousBalance() {
+    localStorage.setItem(STORAGE_PREV_BALANCE, String(previousBalance));
+  }
+  function setAccountBalance(newValue) {
+    previousBalance = accountBalance;
+    accountBalance = newValue;
+    saveBalance();
+    savePreviousBalance();
+  }
   function loadExpenses() {
     try {
       var raw = localStorage.getItem(STORAGE_EXPENSES);
@@ -624,6 +719,15 @@
   }
   function saveExpenses() {
     localStorage.setItem(STORAGE_EXPENSES, JSON.stringify(expenses));
+  }
+  function loadGoals() {
+    try {
+      var raw = localStorage.getItem(STORAGE_GOALS);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function saveGoals(goals) {
+    localStorage.setItem(STORAGE_GOALS, JSON.stringify(goals));
   }
   function genId() { return Date.now() + "-" + Math.random().toString(36).slice(2); }
 
@@ -1009,8 +1113,10 @@
   var budgetView = document.getElementById("budgetView");
   var dashboardView = document.getElementById("dashboardView");
   var calendarView = document.getElementById("calendarView");
+  var goalsView = document.getElementById("goalsView");
   var tabBar = document.getElementById("tabBar");
   var tabHomeBtn = document.getElementById("tabHomeBtn");
+  var tabGoalsBtn = document.getElementById("tabGoalsBtn");
   var tabCalendarBtn = document.getElementById("tabCalendarBtn");
 
   function hideAllViews() {
@@ -1018,6 +1124,13 @@
     budgetView.classList.add("hidden");
     dashboardView.classList.add("hidden");
     calendarView.classList.add("hidden");
+    goalsView.classList.add("hidden");
+  }
+
+  function setActiveTab(btn) {
+    [tabHomeBtn, tabGoalsBtn, tabCalendarBtn].forEach(function (b) {
+      b.classList.toggle("active", b === btn);
+    });
   }
 
   function showSetup(forEdit) {
@@ -1044,8 +1157,7 @@
   function showDashboard() {
     hideAllViews();
     tabBar.classList.remove("hidden");
-    tabHomeBtn.classList.add("active");
-    tabCalendarBtn.classList.remove("active");
+    setActiveTab(tabHomeBtn);
     dashboardView.classList.remove("hidden");
     renderDashboard();
   }
@@ -1053,15 +1165,24 @@
   function showCalendar() {
     hideAllViews();
     tabBar.classList.remove("hidden");
-    tabCalendarBtn.classList.add("active");
-    tabHomeBtn.classList.remove("active");
+    setActiveTab(tabCalendarBtn);
     calendarView.classList.remove("hidden");
     renderCalendar();
   }
 
+  function showGoals() {
+    hideAllViews();
+    tabBar.classList.remove("hidden");
+    setActiveTab(tabGoalsBtn);
+    goalsView.classList.remove("hidden");
+    renderGoals();
+  }
+
   document.getElementById("editSettingsBtn").addEventListener("click", function () { showSetup(true); });
   document.getElementById("editBudgetBtn").addEventListener("click", function () { showBudgetSetup(true); });
+  document.getElementById("viewGoalsBtn").addEventListener("click", showGoals);
   tabHomeBtn.addEventListener("click", showDashboard);
+  tabGoalsBtn.addEventListener("click", showGoals);
   tabCalendarBtn.addEventListener("click", showCalendar);
 
   var frequencyLabels = {
@@ -1088,6 +1209,21 @@
 
     document.getElementById("accountBalanceValue").textContent = fmtMoney(accountBalance);
     document.getElementById("balanceEditInput").value = accountBalance;
+
+    var balanceDelta = accountBalance - previousBalance;
+    var deltaEl = document.getElementById("accountBalanceDelta");
+    if (balanceDelta > 0) {
+      deltaEl.textContent = "▲ " + fmtMoney(balanceDelta) + " since last change";
+      deltaEl.style.color = "var(--good)";
+    } else if (balanceDelta < 0) {
+      deltaEl.textContent = "▼ " + fmtMoney(Math.abs(balanceDelta)) + " since last change";
+      deltaEl.style.color = "var(--danger)";
+    } else {
+      deltaEl.textContent = "No change yet";
+      deltaEl.style.color = "var(--muted)";
+    }
+
+    renderHomeGoals();
 
     var hoursCard = document.getElementById("hoursCard");
     var periodIncome = computePeriodIncome(period);
@@ -1229,9 +1365,8 @@
       delBtn.textContent = "Delete"; delBtn.className = "btn danger-outline small";
       delBtn.addEventListener("click", function () {
         expenses = expenses.filter(function (x) { return x.id !== exp.id; });
-        accountBalance += Number(exp.amount);
+        setAccountBalance(accountBalance + Number(exp.amount));
         saveExpenses();
-        saveBalance();
         renderDashboard();
       });
       actionTd.appendChild(delBtn);
@@ -1256,8 +1391,7 @@
   document.getElementById("saveBalanceBtn").addEventListener("click", function () {
     var val = Number(document.getElementById("balanceEditInput").value);
     if (isNaN(val)) { alert("Enter a valid balance."); return; }
-    accountBalance = val;
-    saveBalance();
+    setAccountBalance(val);
     renderDashboard();
   });
 
@@ -1273,6 +1407,7 @@
   }
   setupToggle("toggleExpenseFormBtn", "expenseFormWrap", "+ Add expense");
   setupToggle("toggleShiftFormBtn", "shiftFormWrap", "+ Add shift");
+  setupToggle("toggleGoalFormBtn", "goalFormWrap", "+ Add goal");
 
   function collapseForm(btnId, wrapId, openLabel) {
     document.getElementById(wrapId).classList.add("hidden");
@@ -1290,9 +1425,8 @@
     if (!categoryId) { alert("Choose a category."); return; }
     if (!amount || amount <= 0) { alert("Enter an amount."); return; }
     expenses.push({ id: genId(), date: dateVal, categoryId: categoryId, amount: amount, note: note });
-    accountBalance -= amount;
+    setAccountBalance(accountBalance - amount);
     saveExpenses();
-    saveBalance();
     document.getElementById("expenseAmount").value = "";
     document.getElementById("expenseNote").value = "";
     collapseForm("toggleExpenseFormBtn", "expenseFormWrap", "+ Add expense");
@@ -1313,6 +1447,207 @@
     saveEntries();
     collapseForm("toggleShiftFormBtn", "shiftFormWrap", "+ Add shift");
     renderDashboard();
+  });
+
+  // ---------- goals ----------
+  function goalProgress(goal) {
+    var checkedSum = goal.items.filter(function (i) { return i.checked; })
+      .reduce(function (sum, i) { return sum + Number(i.cost); }, 0);
+    var remaining = Math.max(0, goal.totalAmount - checkedSum);
+    var percent = goal.totalAmount > 0 ? Math.min(100, (checkedSum / goal.totalAmount) * 100) : 0;
+    return { checkedSum: checkedSum, remaining: remaining, percent: percent };
+  }
+
+  function renderGoals() {
+    var goals = loadGoals();
+    var listEl = document.getElementById("goalsList");
+    listEl.innerHTML = "";
+    document.getElementById("goalsEmptyNote").classList.toggle("hidden", goals.length > 0);
+
+    goals.forEach(function (goal) {
+      var progress = goalProgress(goal);
+
+      var card = document.createElement("div");
+      card.className = "card";
+
+      var headerRow = document.createElement("div");
+      headerRow.className = "card-header-row";
+      var title = document.createElement("h2");
+      title.textContent = goal.name;
+      var delGoalBtn = document.createElement("button");
+      delGoalBtn.type = "button";
+      delGoalBtn.className = "btn danger-outline small";
+      delGoalBtn.textContent = "Delete goal";
+      delGoalBtn.addEventListener("click", function () {
+        goals = goals.filter(function (g) { return g.id !== goal.id; });
+        saveGoals(goals);
+        renderGoals();
+      });
+      headerRow.appendChild(title);
+      headerRow.appendChild(delGoalBtn);
+      card.appendChild(headerRow);
+
+      var progressMeta = document.createElement("div");
+      progressMeta.className = "period-meta";
+      progressMeta.style.marginBottom = "8px";
+      progressMeta.textContent = fmtMoney(progress.checkedSum) + " of " + fmtMoney(goal.totalAmount) + " — " +
+        (progress.remaining <= 0 ? "Goal reached!" : fmtMoney(progress.remaining) + " to go");
+      card.appendChild(progressMeta);
+
+      var track = document.createElement("div");
+      track.className = "progress-track";
+      var fill = document.createElement("div");
+      fill.className = "progress-fill";
+      fill.style.width = progress.percent + "%";
+      track.appendChild(fill);
+      card.appendChild(track);
+
+      var itemsList = document.createElement("div");
+      itemsList.style.marginTop = "14px";
+      goal.items.forEach(function (item) {
+        var row = document.createElement("label");
+        row.className = "goal-item-row";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = item.checked;
+        cb.addEventListener("change", function () {
+          item.checked = cb.checked;
+          saveGoals(goals);
+          renderGoals();
+        });
+        var nameSpan = document.createElement("span");
+        nameSpan.className = "goal-item-name";
+        nameSpan.textContent = item.name;
+        if (item.checked) nameSpan.style.textDecoration = "line-through";
+        var costSpan = document.createElement("span");
+        costSpan.className = "goal-item-cost";
+        costSpan.textContent = fmtMoney(item.cost);
+        var delItemBtn = document.createElement("button");
+        delItemBtn.type = "button";
+        delItemBtn.className = "btn danger-outline small";
+        delItemBtn.textContent = "✕";
+        delItemBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          goal.items = goal.items.filter(function (i) { return i.id !== item.id; });
+          saveGoals(goals);
+          renderGoals();
+        });
+        row.appendChild(cb);
+        row.appendChild(nameSpan);
+        row.appendChild(costSpan);
+        row.appendChild(delItemBtn);
+        itemsList.appendChild(row);
+      });
+      card.appendChild(itemsList);
+
+      var addItemBtn = document.createElement("button");
+      addItemBtn.type = "button";
+      addItemBtn.className = "btn secondary small";
+      addItemBtn.textContent = "+ Add item";
+      addItemBtn.style.marginTop = "12px";
+
+      var itemFormWrap = document.createElement("div");
+      itemFormWrap.className = "collapsible hidden";
+      itemFormWrap.style.marginTop = "10px";
+
+      var itemNameField = document.createElement("div");
+      itemNameField.className = "field";
+      var itemNameLabel = document.createElement("label");
+      itemNameLabel.textContent = "Item";
+      var itemNameInput = document.createElement("input");
+      itemNameInput.type = "text";
+      itemNameInput.placeholder = "e.g. Snowboard";
+      itemNameField.appendChild(itemNameLabel);
+      itemNameField.appendChild(itemNameInput);
+
+      var itemCostField = document.createElement("div");
+      itemCostField.className = "field";
+      var itemCostLabel = document.createElement("label");
+      itemCostLabel.textContent = "Cost ($)";
+      var itemCostInput = document.createElement("input");
+      itemCostInput.type = "number";
+      itemCostInput.min = "0";
+      itemCostInput.step = "0.01";
+      itemCostInput.placeholder = "e.g. 400";
+      itemCostField.appendChild(itemCostLabel);
+      itemCostField.appendChild(itemCostInput);
+
+      var saveItemBtn = document.createElement("button");
+      saveItemBtn.type = "button";
+      saveItemBtn.className = "btn small";
+      saveItemBtn.textContent = "Add item";
+      saveItemBtn.addEventListener("click", function () {
+        var nm = itemNameInput.value.trim();
+        var cost = Number(itemCostInput.value);
+        if (!nm) { alert("Name the item."); return; }
+        if (!cost || cost < 0) { alert("Enter a valid cost."); return; }
+        goal.items.push({ id: genId(), name: nm, cost: cost, checked: false });
+        saveGoals(goals);
+        renderGoals();
+      });
+
+      addItemBtn.addEventListener("click", function () {
+        itemFormWrap.classList.toggle("hidden");
+      });
+
+      itemFormWrap.appendChild(itemNameField);
+      itemFormWrap.appendChild(itemCostField);
+      itemFormWrap.appendChild(saveItemBtn);
+      card.appendChild(addItemBtn);
+      card.appendChild(itemFormWrap);
+
+      listEl.appendChild(card);
+    });
+  }
+
+  function renderHomeGoals() {
+    var goals = loadGoals();
+    var listEl = document.getElementById("homeGoalsList");
+    listEl.innerHTML = "";
+    document.getElementById("homeGoalsEmptyNote").classList.toggle("hidden", goals.length > 0);
+
+    goals.forEach(function (goal) {
+      var progress = goalProgress(goal);
+
+      var row = document.createElement("div");
+      row.style.marginBottom = "14px";
+
+      var line = document.createElement("div");
+      line.className = "stat-row";
+      var nameSpan = document.createElement("span");
+      nameSpan.textContent = goal.name;
+      var remSpan = document.createElement("span");
+      remSpan.className = "stat-value";
+      remSpan.textContent = progress.remaining <= 0 ? "Reached!" : fmtMoney(progress.remaining) + " to go";
+      line.appendChild(nameSpan);
+      line.appendChild(remSpan);
+      row.appendChild(line);
+
+      var track = document.createElement("div");
+      track.className = "progress-track";
+      track.style.marginTop = "6px";
+      var fill = document.createElement("div");
+      fill.className = "progress-fill";
+      fill.style.width = progress.percent + "%";
+      track.appendChild(fill);
+      row.appendChild(track);
+
+      listEl.appendChild(row);
+    });
+  }
+
+  document.getElementById("addGoalBtn").addEventListener("click", function () {
+    var name = document.getElementById("goalName").value.trim();
+    var total = Number(document.getElementById("goalTotal").value);
+    if (!name) { alert("Name the goal."); return; }
+    if (!total || total <= 0) { alert("Enter a valid total price."); return; }
+    var goals = loadGoals();
+    goals.push({ id: genId(), name: name, totalAmount: total, items: [] });
+    saveGoals(goals);
+    document.getElementById("goalName").value = "";
+    document.getElementById("goalTotal").value = "";
+    collapseForm("toggleGoalFormBtn", "goalFormWrap", "+ Add goal");
+    renderGoals();
   });
 
   // ---------- calendar ----------
