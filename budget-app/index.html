@@ -215,25 +215,25 @@
 
     <div class="card" id="hoursCard">
       <h2>Log hours worked</h2>
+      <div class="field">
+        <label for="hoursDate">Date</label>
+        <input type="date" id="hoursDate">
+      </div>
       <div class="inline-fields">
         <div class="field">
-          <label for="hoursDate">Date</label>
-          <input type="date" id="hoursDate">
+          <label for="timeIn">Time in</label>
+          <select id="timeIn"></select>
         </div>
         <div class="field">
-          <label for="hoursAmount">Hours</label>
-          <input type="number" id="hoursAmount" min="0" step="0.25" placeholder="e.g. 8">
+          <label for="timeOut">Time out</label>
+          <select id="timeOut"></select>
         </div>
-      </div>
-      <div class="field">
-        <label for="hoursNote">Note (optional)</label>
-        <input type="text" id="hoursNote" placeholder="e.g. covered a shift">
       </div>
       <button class="btn" id="addHoursBtn">Add hours</button>
 
       <table id="hoursTable">
         <thead>
-          <tr><th>Date</th><th>Hours</th><th>Note</th><th></th></tr>
+          <tr><th>Date</th><th>Time in</th><th>Time out</th><th>Hours</th><th></th></tr>
         </thead>
         <tbody id="hoursTableBody"></tbody>
       </table>
@@ -299,6 +299,24 @@
     return "$" + (Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  // ---------- time-of-day helpers (for clock in / clock out dropdowns) ----------
+  function fmtTime(minutesTotal) {
+    var hh = Math.floor(minutesTotal / 60) % 24, mm = minutesTotal % 60;
+    var period = hh >= 12 ? "PM" : "AM";
+    var h12 = hh % 12; if (h12 === 0) h12 = 12;
+    return h12 + ":" + String(mm).padStart(2, "0") + " " + period;
+  }
+  function timeValueToMinutes(val) {
+    var parts = val.split(":");
+    return Number(parts[0]) * 60 + Number(parts[1]);
+  }
+  function hoursBetween(timeInVal, timeOutVal) {
+    var inM = timeValueToMinutes(timeInVal), outM = timeValueToMinutes(timeOutVal);
+    var diff = outM - inM;
+    if (diff <= 0) diff += 24 * 60; // overnight shift
+    return diff / 60;
+  }
+
   // ---------- pay period calculation ----------
   // Returns {start: Date, end: Date, payday: Date} for the period containing `date`.
   function computePeriod(cfg, date) {
@@ -359,6 +377,19 @@
   lastOpt.value = "last";
   lastOpt.textContent = "Last day of month";
   monthlyDaySelect.appendChild(lastOpt);
+
+  var timeInSelect = document.getElementById("timeIn");
+  var timeOutSelect = document.getElementById("timeOut");
+  [timeInSelect, timeOutSelect].forEach(function (select) {
+    for (var t = 0; t < 24 * 60; t += 15) {
+      var tOpt = document.createElement("option");
+      tOpt.value = String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0");
+      tOpt.textContent = fmtTime(t);
+      select.appendChild(tOpt);
+    }
+  });
+  timeInSelect.value = "09:00";
+  timeOutSelect.value = "17:00";
 
   function ordinal(n) {
     var s = ["th", "st", "nd", "rd"], v = n % 100;
@@ -492,10 +523,12 @@
         var tr = document.createElement("tr");
         var dateTd = document.createElement("td");
         dateTd.textContent = fmtDate(new Date(e.date));
+        var timeInTd = document.createElement("td");
+        timeInTd.textContent = fmtTime(timeValueToMinutes(e.timeIn));
+        var timeOutTd = document.createElement("td");
+        timeOutTd.textContent = fmtTime(timeValueToMinutes(e.timeOut));
         var hoursTd = document.createElement("td");
         hoursTd.textContent = e.hours;
-        var noteTd = document.createElement("td");
-        noteTd.textContent = e.note || "";
         var actionTd = document.createElement("td");
         var delBtn = document.createElement("button");
         delBtn.textContent = "Delete";
@@ -506,7 +539,7 @@
           renderDashboard();
         });
         actionTd.appendChild(delBtn);
-        tr.appendChild(dateTd); tr.appendChild(hoursTd); tr.appendChild(noteTd); tr.appendChild(actionTd);
+        tr.appendChild(dateTd); tr.appendChild(timeInTd); tr.appendChild(timeOutTd); tr.appendChild(hoursTd); tr.appendChild(actionTd);
         tbody.appendChild(tr);
       });
       document.getElementById("hoursEmptyNote").classList.toggle("hidden", periodEntries.length > 0);
@@ -527,14 +560,16 @@
 
   document.getElementById("addHoursBtn").addEventListener("click", function () {
     var dateVal = document.getElementById("hoursDate").value;
-    var hoursVal = Number(document.getElementById("hoursAmount").value);
-    var note = document.getElementById("hoursNote").value.trim();
+    var timeInVal = timeInSelect.value;
+    var timeOutVal = timeOutSelect.value;
     if (!dateVal) { alert("Pick a date."); return; }
-    if (!hoursVal || hoursVal <= 0) { alert("Enter the hours worked."); return; }
-    entries.push({ id: Date.now() + "-" + Math.random().toString(36).slice(2), date: dateVal, hours: hoursVal, note: note });
+    if (timeInVal === timeOutVal) { alert("Time out must be different from time in."); return; }
+    var hoursVal = hoursBetween(timeInVal, timeOutVal);
+    entries.push({
+      id: Date.now() + "-" + Math.random().toString(36).slice(2),
+      date: dateVal, timeIn: timeInVal, timeOut: timeOutVal, hours: hoursVal
+    });
     saveEntries();
-    document.getElementById("hoursAmount").value = "";
-    document.getElementById("hoursNote").value = "";
     renderDashboard();
   });
 
