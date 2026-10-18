@@ -15,6 +15,7 @@
     --accent-dark: #1d4ed8;
     --good: #15803d;
     --danger: #dc2626;
+    --warning: #d97706;
     --radius: 10px;
   }
   * { box-sizing: border-box; }
@@ -119,10 +120,54 @@
   .hidden { display: none !important; }
   .inline-fields { display: flex; gap: 10px; }
   .inline-fields .field { flex: 1; }
+  .overview-top { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+  .ring-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .ring-wrap { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
+  .ring-wrap svg { width: 110px; height: 110px; }
+  .ring-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 700; }
+  .ring-caption { font-size: 0.78rem; color: var(--muted); }
+  .stats-col { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 16px; }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .stat-label { font-size: 0.82rem; color: var(--muted); }
+  .stat-value { font-weight: 700; font-size: 1.05rem; }
+  .balance-edit-row { display: flex; gap: 8px; margin-top: 6px; }
+  .balance-edit-row input { width: auto; flex: 1; }
+  .calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .calendar-weekdays { margin-top: 14px; font-size: 0.7rem; color: var(--muted); text-align: center; font-weight: 600; }
+  .calendar-grid { margin-top: 4px; }
+  .cal-day {
+    min-height: 62px;
+    border-radius: 6px;
+    padding: 4px 5px;
+    font-size: 0.68rem;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+  }
+  .cal-day.outside { opacity: 0.35; }
+  .cal-day .cal-num { font-weight: 700; font-size: 0.75rem; }
+  .cal-day .cal-spent, .cal-day .cal-hours, .cal-day .cal-paid {
+    background: rgba(255, 255, 255, 0.82);
+    border-radius: 4px;
+    padding: 0 3px;
+    width: fit-content;
+  }
+  .cal-day .cal-spent { color: var(--danger); }
+  .cal-day .cal-hours { color: var(--accent); }
+  .cal-day .cal-paid { color: var(--good); font-weight: 700; }
+  .legend-row { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border); flex-shrink: 0; }
 </style>
 </head>
 <body>
 <div class="wrap">
+
+  <div class="toggle-group hidden" id="tabBar">
+    <button type="button" id="tabHomeBtn">Home</button>
+    <button type="button" id="tabCalendarBtn">Calendar</button>
+  </div>
 
   <!-- SETUP VIEW -->
   <div id="setupView">
@@ -214,7 +259,7 @@
     <button class="btn secondary hidden" id="cancelBudgetBtn" style="margin-top:6px;">Cancel</button>
   </div>
 
-  <!-- DASHBOARD VIEW -->
+  <!-- HOME VIEW -->
   <div id="dashboardView" class="hidden">
     <div class="top-bar">
       <div>
@@ -224,6 +269,37 @@
       <div style="display:flex; gap:8px;">
         <button class="btn secondary small" id="editBudgetBtn">Edit budget</button>
         <button class="btn secondary small" id="editSettingsBtn">Edit settings</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="overview-top">
+        <div class="ring-col">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 110 110">
+              <circle cx="55" cy="55" r="48" fill="none" stroke="#e3e5e8" stroke-width="10"></circle>
+              <circle id="budgetRingProgress" cx="55" cy="55" r="48" fill="none" stroke-width="10" stroke-linecap="round" transform="rotate(-90 55 55)"></circle>
+            </svg>
+            <div class="ring-label" id="budgetRingLabel">0%</div>
+          </div>
+          <div class="ring-caption">Budget used</div>
+        </div>
+        <div class="stats-col">
+          <div class="stat-row">
+            <span class="stat-label">Next paycheck</span>
+            <span class="stat-value" id="nextPaycheckValue"></span>
+          </div>
+          <div>
+            <div class="stat-row">
+              <span class="stat-label">Account balance</span>
+              <span class="stat-value" id="accountBalanceValue"></span>
+            </div>
+            <div class="balance-edit-row">
+              <input type="number" id="balanceEditInput" step="0.01">
+              <button type="button" class="btn secondary small" id="saveBalanceBtn">Update</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -245,7 +321,7 @@
       <h2>Budget for this period</h2>
       <table id="budgetTable">
         <thead>
-          <tr><th>Category</th><th>Type</th><th>Allocated</th></tr>
+          <tr><th>Category</th><th>Type</th><th>Allocated</th><th>Spent</th><th>Remaining</th></tr>
         </thead>
         <tbody id="budgetTableBody"></tbody>
       </table>
@@ -253,8 +329,39 @@
       <div class="period-meta" id="budgetDashboardSummary" style="margin-top:10px;"></div>
     </div>
 
+    <div class="card" id="expensesCard">
+      <h2>Expenses</h2>
+      <div class="field">
+        <label for="expenseDate">Date</label>
+        <input type="date" id="expenseDate">
+      </div>
+      <div class="inline-fields">
+        <div class="field">
+          <label for="expenseCategory">Category</label>
+          <select id="expenseCategory"></select>
+        </div>
+        <div class="field">
+          <label for="expenseAmount">Amount ($)</label>
+          <input type="number" id="expenseAmount" min="0" step="0.01" placeholder="e.g. 45">
+        </div>
+      </div>
+      <div class="field">
+        <label for="expenseNote">Note (optional)</label>
+        <input type="text" id="expenseNote" placeholder="e.g. Groceries">
+      </div>
+      <button class="btn" id="addExpenseBtn">Add expense</button>
+
+      <table id="expensesTable">
+        <thead>
+          <tr><th>Date</th><th>Category</th><th>Amount</th><th>Note</th><th></th></tr>
+        </thead>
+        <tbody id="expensesTableBody"></tbody>
+      </table>
+      <div class="empty-note hidden" id="expensesEmptyNote">No expenses logged for this pay period yet.</div>
+    </div>
+
     <div class="card" id="hoursCard">
-      <h2>Log hours worked</h2>
+      <h2>Shifts</h2>
       <div class="field">
         <label for="hoursDate">Date</label>
         <input type="date" id="hoursDate">
@@ -269,7 +376,7 @@
           <select id="timeOut"></select>
         </div>
       </div>
-      <button class="btn" id="addHoursBtn">Add hours</button>
+      <button class="btn" id="addHoursBtn">Add shift</button>
 
       <table id="hoursTable">
         <thead>
@@ -277,7 +384,32 @@
         </thead>
         <tbody id="hoursTableBody"></tbody>
       </table>
-      <div class="empty-note hidden" id="hoursEmptyNote">No hours logged for this pay period yet.</div>
+      <div class="empty-note hidden" id="hoursEmptyNote">No shifts logged for this pay period yet.</div>
+    </div>
+  </div>
+
+  <!-- CALENDAR VIEW -->
+  <div id="calendarView" class="hidden">
+    <div class="top-bar">
+      <h1>Calendar</h1>
+    </div>
+
+    <div class="card">
+      <div class="period-nav">
+        <button class="btn secondary small" id="prevMonthBtn">&larr; Prev</button>
+        <div class="period-range" id="calendarMonthLabel"></div>
+        <button class="btn secondary small" id="nextMonthBtn">Next &rarr;</button>
+      </div>
+      <div class="calendar-weekdays" id="calendarWeekdays"></div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>Legend</h2>
+      <div class="legend-row"><span class="cal-spent">-$12</span> spent that day · <span class="cal-hours">4h</span> worked that day · <span class="cal-paid">+$400</span> paycheck received</div>
+      <div class="legend-row"><span class="legend-swatch" style="background:rgb(34,139,34);"></span> week well under budget</div>
+      <div class="legend-row"><span class="legend-swatch" style="background:#fff;"></span> week right on budget</div>
+      <div class="legend-row"><span class="legend-swatch" style="background:rgb(220,38,38);"></span> week well over budget</div>
     </div>
   </div>
 
@@ -290,9 +422,13 @@
   var STORAGE_CONFIG = "budgetApp.incomeConfig";
   var STORAGE_ENTRIES = "budgetApp.hourEntries";
   var STORAGE_BUDGET = "budgetApp.budgetConfig";
+  var STORAGE_BALANCE = "budgetApp.accountBalance";
+  var STORAGE_EXPENSES = "budgetApp.expenses";
 
   var config = loadConfig();
   var entries = loadEntries();
+  var accountBalance = loadBalance();
+  var expenses = loadExpenses();
   var refDate = startOfDay(new Date()); // drives which pay period is shown
 
   // ---------- storage ----------
@@ -324,6 +460,24 @@
   function saveBudgetConfig(cfg) {
     localStorage.setItem(STORAGE_BUDGET, JSON.stringify(cfg));
   }
+  function loadBalance() {
+    try {
+      var raw = localStorage.getItem(STORAGE_BALANCE);
+      return raw !== null ? Number(raw) : 0;
+    } catch (e) { return 0; }
+  }
+  function saveBalance() {
+    localStorage.setItem(STORAGE_BALANCE, String(accountBalance));
+  }
+  function loadExpenses() {
+    try {
+      var raw = localStorage.getItem(STORAGE_EXPENSES);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function saveExpenses() {
+    localStorage.setItem(STORAGE_EXPENSES, JSON.stringify(expenses));
+  }
   function genId() { return Date.now() + "-" + Math.random().toString(36).slice(2); }
 
   // ---------- date helpers ----------
@@ -348,6 +502,21 @@
   }
   function fmtMoney(n) {
     return "$" + (Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function sameDate(a, b) { return toISODate(a) === toISODate(b); }
+  function sumExpensesOnDate(d) {
+    var iso = toISODate(d);
+    return expenses.filter(function (e) { return e.date === iso; })
+      .reduce(function (sum, e) { return sum + Number(e.amount); }, 0);
+  }
+  function sumHoursOnDate(d) {
+    var iso = toISODate(d);
+    return entries.filter(function (e) { return e.date === iso; })
+      .reduce(function (sum, e) { return sum + Number(e.hours); }, 0);
+  }
+  function categoryNameById(categories, id) {
+    var found = categories.filter(function (c) { return c.id === id; })[0];
+    return found ? found.name : "Uncategorized";
   }
 
   // ---------- time-of-day helpers (for clock in / clock out dropdowns) ----------
@@ -444,6 +613,37 @@
     });
     var totalHours = periodEntries.reduce(function (sum, e) { return sum + Number(e.hours); }, 0);
     return totalHours * config.hourlyWage;
+  }
+
+  // ---------- progress ring ----------
+  var RING_RADIUS = 48;
+  var RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+  function updateBudgetRing(percent) {
+    var clamped = Math.max(0, Math.min(percent, 100));
+    var offset = RING_CIRCUMFERENCE * (1 - clamped / 100);
+    var ring = document.getElementById("budgetRingProgress");
+    ring.style.strokeDasharray = RING_CIRCUMFERENCE;
+    ring.style.strokeDashoffset = offset;
+    var color = percent > 100 ? "var(--danger)" : percent >= 80 ? "var(--warning)" : "var(--good)";
+    ring.style.stroke = color;
+    var label = document.getElementById("budgetRingLabel");
+    label.textContent = Math.round(percent) + "%";
+    label.style.color = color;
+  }
+
+  // ---------- week performance color (for the calendar) ----------
+  function mixColor(from, to, frac) {
+    var r = Math.round(from[0] + (to[0] - from[0]) * frac);
+    var g = Math.round(from[1] + (to[1] - from[1]) * frac);
+    var b = Math.round(from[2] + (to[2] - from[2]) * frac);
+    return "rgb(" + r + "," + g + "," + b + ")";
+  }
+  function weekColor(ratio) {
+    if (ratio === null) return "transparent";
+    var diff = 1 - ratio; // >0 means under budget (good), <0 means over budget (bad)
+    var t = Math.max(-1, Math.min(1, diff));
+    var to = t >= 0 ? [34, 139, 34] : [220, 38, 38];
+    return mixColor([255, 255, 255], to, Math.abs(t));
   }
 
   var draftCategories = [];
@@ -657,19 +857,25 @@
     else document.getElementById("hourlyWage").value = cfg.hourlyWage;
   }
 
-  // ---------- dashboard view wiring ----------
+  // ---------- view wiring ----------
   var setupView = document.getElementById("setupView");
   var budgetView = document.getElementById("budgetView");
   var dashboardView = document.getElementById("dashboardView");
+  var calendarView = document.getElementById("calendarView");
+  var tabBar = document.getElementById("tabBar");
+  var tabHomeBtn = document.getElementById("tabHomeBtn");
+  var tabCalendarBtn = document.getElementById("tabCalendarBtn");
 
   function hideAllViews() {
     setupView.classList.add("hidden");
     budgetView.classList.add("hidden");
     dashboardView.classList.add("hidden");
+    calendarView.classList.add("hidden");
   }
 
   function showSetup(forEdit) {
     hideAllViews();
+    tabBar.classList.add("hidden");
     setupView.classList.remove("hidden");
     document.getElementById("cancelSetupBtn").classList.toggle("hidden", !forEdit);
     if (forEdit && config) populateSetupForm(config);
@@ -678,6 +884,7 @@
 
   function showBudgetSetup(forEdit) {
     hideAllViews();
+    tabBar.classList.add("hidden");
     budgetView.classList.remove("hidden");
     document.getElementById("cancelBudgetBtn").classList.toggle("hidden", !forEdit);
     var saved = loadBudgetConfig();
@@ -689,12 +896,26 @@
 
   function showDashboard() {
     hideAllViews();
+    tabBar.classList.remove("hidden");
+    tabHomeBtn.classList.add("active");
+    tabCalendarBtn.classList.remove("active");
     dashboardView.classList.remove("hidden");
     renderDashboard();
   }
 
+  function showCalendar() {
+    hideAllViews();
+    tabBar.classList.remove("hidden");
+    tabCalendarBtn.classList.add("active");
+    tabHomeBtn.classList.remove("active");
+    calendarView.classList.remove("hidden");
+    renderCalendar();
+  }
+
   document.getElementById("editSettingsBtn").addEventListener("click", function () { showSetup(true); });
   document.getElementById("editBudgetBtn").addEventListener("click", function () { showBudgetSetup(true); });
+  tabHomeBtn.addEventListener("click", showDashboard);
+  tabCalendarBtn.addEventListener("click", showCalendar);
 
   var frequencyLabels = {
     weekly: "Weekly", biweekly: "Every 2 weeks", semimonthly: "Twice a month", monthly: "Monthly"
@@ -709,6 +930,17 @@
 
     document.getElementById("periodRange").textContent = fmtDate(period.start) + " – " + fmtDate(period.end);
     document.getElementById("periodPayday").textContent = "Payday: " + fmtDate(period.payday);
+
+    var today = startOfDay(new Date());
+    var daysUntilPayday = daysBetween(today, period.payday);
+    var paycheckText = fmtDate(period.payday);
+    if (daysUntilPayday === 0) paycheckText += " (today)";
+    else if (daysUntilPayday > 0) paycheckText += " (in " + daysUntilPayday + " day" + (daysUntilPayday === 1 ? "" : "s") + ")";
+    else paycheckText += " (" + Math.abs(daysUntilPayday) + " day" + (Math.abs(daysUntilPayday) === 1 ? "" : "s") + " ago)";
+    document.getElementById("nextPaycheckValue").textContent = paycheckText;
+
+    document.getElementById("accountBalanceValue").textContent = fmtMoney(accountBalance);
+    document.getElementById("balanceEditInput").value = accountBalance;
 
     var hoursCard = document.getElementById("hoursCard");
     var periodIncome = computePeriodIncome(period);
@@ -758,10 +990,22 @@
       document.getElementById("hoursTable").classList.toggle("hidden", periodEntries.length === 0);
     }
 
-    renderBudgetCard(periodIncome);
+    var periodExpenses = expenses.filter(function (e) {
+      var d = startOfDay(new Date(e.date));
+      return d >= period.start && d <= period.end;
+    }).sort(function (a, b) { return a.date.localeCompare(b.date); });
+
+    var budgetTotals = renderBudgetCard(periodIncome, periodExpenses);
+    var ringPercent = budgetTotals.totalAllocated > 0
+      ? (budgetTotals.totalSpent / budgetTotals.totalAllocated) * 100
+      : (budgetTotals.totalSpent > 0 ? 100 : 0);
+    updateBudgetRing(ringPercent);
+
+    renderExpenseCategoryOptions();
+    renderExpensesList(periodExpenses);
   }
 
-  function renderBudgetCard(income) {
+  function renderBudgetCard(income, periodExpenses) {
     var saved = loadBudgetConfig();
     var tbody = document.getElementById("budgetTableBody");
     tbody.innerHTML = "";
@@ -769,24 +1013,86 @@
       document.getElementById("budgetEmptyNote").classList.remove("hidden");
       document.getElementById("budgetTable").classList.add("hidden");
       document.getElementById("budgetDashboardSummary").textContent = "";
-      return;
+      var fallbackSpent = periodExpenses.reduce(function (sum, e) { return sum + Number(e.amount); }, 0);
+      return { totalAllocated: 0, totalSpent: fallbackSpent };
     }
     document.getElementById("budgetEmptyNote").classList.add("hidden");
     document.getElementById("budgetTable").classList.remove("hidden");
-    var total = 0;
+    var totalAllocated = 0, totalSpent = 0;
     saved.categories.forEach(function (cat) {
       var amt = categoryAmount(cat, income);
-      total += amt;
+      var spent = periodExpenses.filter(function (e) { return e.categoryId === cat.id; })
+        .reduce(function (sum, e) { return sum + Number(e.amount); }, 0);
+      totalAllocated += amt;
+      totalSpent += spent;
+      var remaining = amt - spent;
       var tr = document.createElement("tr");
       var nameTd = document.createElement("td"); nameTd.textContent = cat.name;
       var typeTd = document.createElement("td"); typeTd.textContent = cat.mode === "percent" ? (cat.value + "%") : "Fixed";
       var amtTd = document.createElement("td"); amtTd.textContent = fmtMoney(amt);
-      tr.appendChild(nameTd); tr.appendChild(typeTd); tr.appendChild(amtTd);
+      var spentTd = document.createElement("td"); spentTd.textContent = fmtMoney(spent);
+      var remTd = document.createElement("td"); remTd.textContent = fmtMoney(remaining);
+      if (remaining < 0) remTd.style.color = "var(--danger)";
+      tr.appendChild(nameTd); tr.appendChild(typeTd); tr.appendChild(amtTd); tr.appendChild(spentTd); tr.appendChild(remTd);
       tbody.appendChild(tr);
     });
-    var remaining = income - total;
+    var remainingOverall = income - totalAllocated;
     document.getElementById("budgetDashboardSummary").textContent =
-      remaining >= 0 ? fmtMoney(remaining) + " unallocated this period" : fmtMoney(Math.abs(remaining)) + " over budget this period";
+      remainingOverall >= 0 ? fmtMoney(remainingOverall) + " unallocated this period" : fmtMoney(Math.abs(remainingOverall)) + " over budget this period";
+    return { totalAllocated: totalAllocated, totalSpent: totalSpent };
+  }
+
+  function renderExpenseCategoryOptions() {
+    var select = document.getElementById("expenseCategory");
+    var saved = loadBudgetConfig();
+    var categories = (saved && saved.categories) || [];
+    var prevValue = select.value;
+    select.innerHTML = "";
+    if (!categories.length) {
+      var opt = document.createElement("option");
+      opt.value = ""; opt.textContent = "No budget categories yet";
+      select.appendChild(opt);
+      select.disabled = true;
+      document.getElementById("addExpenseBtn").disabled = true;
+      return;
+    }
+    select.disabled = false;
+    document.getElementById("addExpenseBtn").disabled = false;
+    categories.forEach(function (cat) {
+      var opt = document.createElement("option");
+      opt.value = cat.id; opt.textContent = cat.name;
+      select.appendChild(opt);
+    });
+    if (categories.some(function (c) { return c.id === prevValue; })) select.value = prevValue;
+  }
+
+  function renderExpensesList(periodExpenses) {
+    var saved = loadBudgetConfig();
+    var categories = (saved && saved.categories) || [];
+    var tbody = document.getElementById("expensesTableBody");
+    tbody.innerHTML = "";
+    periodExpenses.forEach(function (exp) {
+      var tr = document.createElement("tr");
+      var dateTd = document.createElement("td"); dateTd.textContent = fmtDate(new Date(exp.date));
+      var catTd = document.createElement("td"); catTd.textContent = categoryNameById(categories, exp.categoryId);
+      var amtTd = document.createElement("td"); amtTd.textContent = fmtMoney(exp.amount);
+      var noteTd = document.createElement("td"); noteTd.textContent = exp.note || "";
+      var actionTd = document.createElement("td");
+      var delBtn = document.createElement("button");
+      delBtn.textContent = "Delete"; delBtn.className = "btn danger-outline small";
+      delBtn.addEventListener("click", function () {
+        expenses = expenses.filter(function (x) { return x.id !== exp.id; });
+        accountBalance += Number(exp.amount);
+        saveExpenses();
+        saveBalance();
+        renderDashboard();
+      });
+      actionTd.appendChild(delBtn);
+      tr.appendChild(dateTd); tr.appendChild(catTd); tr.appendChild(amtTd); tr.appendChild(noteTd); tr.appendChild(actionTd);
+      tbody.appendChild(tr);
+    });
+    document.getElementById("expensesEmptyNote").classList.toggle("hidden", periodExpenses.length > 0);
+    document.getElementById("expensesTable").classList.toggle("hidden", periodExpenses.length === 0);
   }
 
   document.getElementById("prevPeriodBtn").addEventListener("click", function () {
@@ -797,6 +1103,31 @@
   document.getElementById("nextPeriodBtn").addEventListener("click", function () {
     var period = computePeriod(config, refDate);
     refDate = addDays(period.end, 1);
+    renderDashboard();
+  });
+
+  document.getElementById("saveBalanceBtn").addEventListener("click", function () {
+    var val = Number(document.getElementById("balanceEditInput").value);
+    if (isNaN(val)) { alert("Enter a valid balance."); return; }
+    accountBalance = val;
+    saveBalance();
+    renderDashboard();
+  });
+
+  document.getElementById("addExpenseBtn").addEventListener("click", function () {
+    var dateVal = document.getElementById("expenseDate").value;
+    var categoryId = document.getElementById("expenseCategory").value;
+    var amount = Number(document.getElementById("expenseAmount").value);
+    var note = document.getElementById("expenseNote").value.trim();
+    if (!dateVal) { alert("Pick a date."); return; }
+    if (!categoryId) { alert("Choose a category."); return; }
+    if (!amount || amount <= 0) { alert("Enter an amount."); return; }
+    expenses.push({ id: genId(), date: dateVal, categoryId: categoryId, amount: amount, note: note });
+    accountBalance -= amount;
+    saveExpenses();
+    saveBalance();
+    document.getElementById("expenseAmount").value = "";
+    document.getElementById("expenseNote").value = "";
     renderDashboard();
   });
 
@@ -815,8 +1146,113 @@
     renderDashboard();
   });
 
+  // ---------- calendar ----------
+  var calendarRefDate = new Date(startOfDay(new Date()).getFullYear(), startOfDay(new Date()).getMonth(), 1);
+  var WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  function renderCalendar() {
+    var year = calendarRefDate.getFullYear(), month = calendarRefDate.getMonth();
+    document.getElementById("calendarMonthLabel").textContent =
+      new Date(year, month, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
+    var weekdaysEl = document.getElementById("calendarWeekdays");
+    if (!weekdaysEl.childNodes.length) {
+      WEEKDAY_LABELS.forEach(function (label) {
+        var el = document.createElement("div");
+        el.textContent = label;
+        weekdaysEl.appendChild(el);
+      });
+    }
+
+    var firstOfMonth = new Date(year, month, 1);
+    var lastOfMonth = new Date(year, month + 1, 0);
+    var gridStart = addDays(firstOfMonth, -firstOfMonth.getDay());
+    var gridEnd = addDays(lastOfMonth, 6 - lastOfMonth.getDay());
+    var weeksCount = Math.round((daysBetween(gridStart, gridEnd) + 1) / 7);
+
+    var budgetCfg = loadBudgetConfig();
+    var gridEl = document.getElementById("calendarGrid");
+    gridEl.innerHTML = "";
+
+    for (var w = 0; w < weeksCount; w++) {
+      var weekStart = addDays(gridStart, w * 7);
+      var weekDates = [];
+      for (var i = 0; i < 7; i++) weekDates.push(addDays(weekStart, i));
+
+      var weeklySpent = 0, weeklyBudget = 0;
+      weekDates.forEach(function (d) {
+        weeklySpent += sumExpensesOnDate(d);
+        if (budgetCfg && budgetCfg.categories.length) {
+          var per = computePeriod(config, d);
+          var inc = computePeriodIncome(per);
+          var allocated = budgetCfg.categories.reduce(function (sum, c) { return sum + categoryAmount(c, inc); }, 0);
+          var periodLen = daysBetween(per.start, per.end) + 1;
+          weeklyBudget += allocated / periodLen;
+        }
+      });
+      var ratio = weeklyBudget > 0 ? weeklySpent / weeklyBudget : null;
+      var bg = weekColor(ratio);
+
+      weekDates.forEach(function (d) {
+        var cell = document.createElement("div");
+        cell.className = "cal-day" + (d.getMonth() !== month ? " outside" : "");
+        cell.style.background = bg;
+
+        var num = document.createElement("div");
+        num.className = "cal-num";
+        num.textContent = d.getDate();
+        cell.appendChild(num);
+
+        var daySpent = sumExpensesOnDate(d);
+        if (daySpent > 0) {
+          var spentEl = document.createElement("div");
+          spentEl.className = "cal-spent";
+          spentEl.textContent = "-" + fmtMoney(daySpent);
+          cell.appendChild(spentEl);
+        }
+
+        if (config.type === "hourly") {
+          var dayHours = sumHoursOnDate(d);
+          if (dayHours > 0) {
+            var hoursEl = document.createElement("div");
+            hoursEl.className = "cal-hours";
+            hoursEl.textContent = dayHours + "h";
+            cell.appendChild(hoursEl);
+          }
+        }
+
+        var dayPeriod = computePeriod(config, d);
+        if (sameDate(dayPeriod.payday, d)) {
+          var paidEl = document.createElement("div");
+          paidEl.className = "cal-paid";
+          paidEl.textContent = "+" + fmtMoney(computePeriodIncome(dayPeriod));
+          cell.appendChild(paidEl);
+        }
+
+        gridEl.appendChild(cell);
+      });
+    }
+  }
+
+  document.getElementById("prevMonthBtn").addEventListener("click", function () {
+    calendarRefDate = new Date(calendarRefDate.getFullYear(), calendarRefDate.getMonth() - 1, 1);
+    renderCalendar();
+  });
+  document.getElementById("nextMonthBtn").addEventListener("click", function () {
+    calendarRefDate = new Date(calendarRefDate.getFullYear(), calendarRefDate.getMonth() + 1, 1);
+    renderCalendar();
+  });
+
   // ---------- init ----------
+  document.querySelectorAll('input[type="date"]').forEach(function (input) {
+    input.addEventListener("click", function () {
+      if (typeof input.showPicker === "function") {
+        try { input.showPicker(); } catch (e) {}
+      }
+    });
+  });
   document.getElementById("hoursDate").value = toISODate(new Date());
+  document.getElementById("expenseDate").value = toISODate(new Date());
   updateFrequencyFields();
   setType("salary");
 
