@@ -178,6 +178,12 @@
     justify-content: center;
     z-index: 50;
   }
+  .switch-user-btn {
+    position: fixed;
+    top: 66px;
+    right: 16px;
+    z-index: 50;
+  }
   .period-nav {
     display: flex;
     align-items: center;
@@ -312,12 +318,26 @@
   </div>
 </div>
 <button type="button" class="theme-toggle" id="themeToggleBtn" aria-label="Toggle dark mode">🌙</button>
+<button type="button" class="btn secondary small switch-user-btn hidden" id="switchUserBtn">Switch user</button>
 <div class="wrap">
 
   <div class="toggle-group hidden" id="tabBar">
     <button type="button" id="tabHomeBtn">Home</button>
     <button type="button" id="tabGoalsBtn">Goals</button>
     <button type="button" id="tabCalendarBtn">Calendar</button>
+  </div>
+
+  <!-- SIGN IN VIEW -->
+  <div id="signInView" class="hidden">
+    <h1>Welcome</h1>
+    <p class="subtitle">Pick a username to continue — no password needed. It just keeps your data separate from anyone else using this device.</p>
+    <div class="card">
+      <div class="field">
+        <label for="signInUsername">Username</label>
+        <input type="text" id="signInUsername" placeholder="e.g. carlos" maxlength="40" autocomplete="username">
+      </div>
+      <button class="btn" id="signInBtn">Continue</button>
+    </div>
   </div>
 
   <!-- SETUP VIEW -->
@@ -643,67 +663,69 @@
 (function () {
   "use strict";
 
-  var STORAGE_CONFIG = "budgetApp.incomeConfig";
-  var STORAGE_ENTRIES = "budgetApp.hourEntries";
-  var STORAGE_BUDGET = "budgetApp.budgetConfig";
-  var STORAGE_BALANCE = "budgetApp.accountBalance";
-  var STORAGE_PREV_BALANCE = "budgetApp.previousBalance";
-  var STORAGE_EXPENSES = "budgetApp.expenses";
-  var STORAGE_GOALS = "budgetApp.goals";
+  var STORAGE_CURRENT_USER = "budgetApp.currentUser";
 
-  var config = loadConfig();
-  var entries = loadEntries();
-  var accountBalance = loadBalance();
-  var previousBalance = loadPreviousBalance();
-  var expenses = loadExpenses();
+  function loadCurrentUsername() {
+    try { return localStorage.getItem(STORAGE_CURRENT_USER); } catch (e) { return null; }
+  }
+  // Every account's data lives under its own key namespace, so switching
+  // usernames on the same browser never mixes up data between people.
+  function nsKey(suffix) { return "budgetApp.user." + currentUsername + "." + suffix; }
+
+  var currentUsername = loadCurrentUsername();
+  var config = currentUsername ? loadConfig() : null;
+  var entries = currentUsername ? loadEntries() : [];
+  var accountBalance = currentUsername ? loadBalance() : 0;
+  var previousBalance = currentUsername ? loadPreviousBalance() : 0;
+  var expenses = currentUsername ? loadExpenses() : [];
   var refDate = startOfDay(new Date()); // drives which pay period is shown
 
   // ---------- storage ----------
   function loadConfig() {
     try {
-      var raw = localStorage.getItem(STORAGE_CONFIG);
+      var raw = localStorage.getItem(nsKey("incomeConfig"));
       return raw ? JSON.parse(raw) : null;
     } catch (e) { return null; }
   }
   function saveConfig(cfg) {
     config = cfg;
-    localStorage.setItem(STORAGE_CONFIG, JSON.stringify(cfg));
+    localStorage.setItem(nsKey("incomeConfig"), JSON.stringify(cfg));
   }
   function loadEntries() {
     try {
-      var raw = localStorage.getItem(STORAGE_ENTRIES);
+      var raw = localStorage.getItem(nsKey("hourEntries"));
       return raw ? JSON.parse(raw) : [];
     } catch (e) { return []; }
   }
   function saveEntries() {
-    localStorage.setItem(STORAGE_ENTRIES, JSON.stringify(entries));
+    localStorage.setItem(nsKey("hourEntries"), JSON.stringify(entries));
   }
   function loadBudgetConfig() {
     try {
-      var raw = localStorage.getItem(STORAGE_BUDGET);
+      var raw = localStorage.getItem(nsKey("budgetConfig"));
       return raw ? JSON.parse(raw) : null;
     } catch (e) { return null; }
   }
   function saveBudgetConfig(cfg) {
-    localStorage.setItem(STORAGE_BUDGET, JSON.stringify(cfg));
+    localStorage.setItem(nsKey("budgetConfig"), JSON.stringify(cfg));
   }
   function loadBalance() {
     try {
-      var raw = localStorage.getItem(STORAGE_BALANCE);
+      var raw = localStorage.getItem(nsKey("accountBalance"));
       return raw !== null ? Number(raw) : 0;
     } catch (e) { return 0; }
   }
   function saveBalance() {
-    localStorage.setItem(STORAGE_BALANCE, String(accountBalance));
+    localStorage.setItem(nsKey("accountBalance"), String(accountBalance));
   }
   function loadPreviousBalance() {
     try {
-      var raw = localStorage.getItem(STORAGE_PREV_BALANCE);
+      var raw = localStorage.getItem(nsKey("previousBalance"));
       return raw !== null ? Number(raw) : accountBalance;
     } catch (e) { return accountBalance; }
   }
   function savePreviousBalance() {
-    localStorage.setItem(STORAGE_PREV_BALANCE, String(previousBalance));
+    localStorage.setItem(nsKey("previousBalance"), String(previousBalance));
   }
   function setAccountBalance(newValue) {
     previousBalance = accountBalance;
@@ -713,21 +735,21 @@
   }
   function loadExpenses() {
     try {
-      var raw = localStorage.getItem(STORAGE_EXPENSES);
+      var raw = localStorage.getItem(nsKey("expenses"));
       return raw ? JSON.parse(raw) : [];
     } catch (e) { return []; }
   }
   function saveExpenses() {
-    localStorage.setItem(STORAGE_EXPENSES, JSON.stringify(expenses));
+    localStorage.setItem(nsKey("expenses"), JSON.stringify(expenses));
   }
   function loadGoals() {
     try {
-      var raw = localStorage.getItem(STORAGE_GOALS);
+      var raw = localStorage.getItem(nsKey("goals"));
       return raw ? JSON.parse(raw) : [];
     } catch (e) { return []; }
   }
   function saveGoals(goals) {
-    localStorage.setItem(STORAGE_GOALS, JSON.stringify(goals));
+    localStorage.setItem(nsKey("goals"), JSON.stringify(goals));
   }
   function genId() { return Date.now() + "-" + Math.random().toString(36).slice(2); }
 
@@ -1109,6 +1131,7 @@
   }
 
   // ---------- view wiring ----------
+  var signInView = document.getElementById("signInView");
   var setupView = document.getElementById("setupView");
   var budgetView = document.getElementById("budgetView");
   var dashboardView = document.getElementById("dashboardView");
@@ -1118,14 +1141,58 @@
   var tabHomeBtn = document.getElementById("tabHomeBtn");
   var tabGoalsBtn = document.getElementById("tabGoalsBtn");
   var tabCalendarBtn = document.getElementById("tabCalendarBtn");
+  var switchUserBtn = document.getElementById("switchUserBtn");
 
   function hideAllViews() {
+    signInView.classList.add("hidden");
     setupView.classList.add("hidden");
     budgetView.classList.add("hidden");
     dashboardView.classList.add("hidden");
     calendarView.classList.add("hidden");
     goalsView.classList.add("hidden");
   }
+
+  function showSignIn() {
+    hideAllViews();
+    tabBar.classList.add("hidden");
+    switchUserBtn.classList.add("hidden");
+    signInView.classList.remove("hidden");
+  }
+
+  function routeToApp() {
+    switchUserBtn.classList.remove("hidden");
+    if (config) {
+      if (loadBudgetConfig()) showDashboard();
+      else showBudgetSetup(false);
+    } else {
+      showSetup(false);
+    }
+  }
+
+  function completeSignIn() {
+    var name = document.getElementById("signInUsername").value.trim();
+    if (!name) { alert("Enter a username."); return; }
+    currentUsername = name;
+    try { localStorage.setItem(STORAGE_CURRENT_USER, name); } catch (e) {}
+    config = loadConfig();
+    entries = loadEntries();
+    accountBalance = loadBalance();
+    previousBalance = loadPreviousBalance();
+    expenses = loadExpenses();
+    refDate = startOfDay(new Date());
+    routeToApp();
+  }
+
+  document.getElementById("signInBtn").addEventListener("click", completeSignIn);
+  document.getElementById("signInUsername").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") completeSignIn();
+  });
+
+  switchUserBtn.addEventListener("click", function () {
+    if (!confirm("Switch user? Your data for \"" + currentUsername + "\" stays saved — sign back in with the same username anytime.")) return;
+    try { localStorage.removeItem(STORAGE_CURRENT_USER); } catch (e) {}
+    location.reload();
+  });
 
   function setActiveTab(btn) {
     [tabHomeBtn, tabGoalsBtn, tabCalendarBtn].forEach(function (b) {
@@ -1819,7 +1886,7 @@
   updateThemeToggleIcon();
 
   // ---------- welcome splash ----------
-  document.getElementById("welcomeSplashText").textContent = config ? "Welcome back" : "Welcome";
+  document.getElementById("welcomeSplashText").textContent = currentUsername ? ("Welcome back, " + currentUsername) : "Welcome";
   setTimeout(function () {
     var splash = document.getElementById("welcomeSplash");
     splash.classList.add("fade-out");
@@ -1839,11 +1906,10 @@
   updateFrequencyFields();
   setType("salary");
 
-  if (config) {
-    if (loadBudgetConfig()) showDashboard();
-    else showBudgetSetup(false);
+  if (currentUsername) {
+    routeToApp();
   } else {
-    showSetup(false);
+    showSignIn();
   }
 })();
 </script>
