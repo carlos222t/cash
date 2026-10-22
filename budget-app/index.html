@@ -1532,9 +1532,14 @@
     var totalAmount = goal.items.reduce(function (sum, i) { return sum + Number(i.cost); }, 0);
     var checkedSum = goal.items.filter(function (i) { return i.checked; })
       .reduce(function (sum, i) { return sum + Number(i.cost); }, 0);
-    var remaining = Math.max(0, totalAmount - checkedSum);
-    var percent = totalAmount > 0 ? Math.min(100, (checkedSum / totalAmount) * 100) : 0;
-    return { totalAmount: totalAmount, checkedSum: checkedSum, remaining: remaining, percent: percent };
+    var paymentsSum = (goal.payments || []).reduce(function (sum, p) { return sum + Number(p.amount); }, 0);
+    var progressAmount = checkedSum + paymentsSum;
+    var remaining = Math.max(0, totalAmount - progressAmount);
+    var percent = totalAmount > 0 ? Math.min(100, (progressAmount / totalAmount) * 100) : 0;
+    return {
+      totalAmount: totalAmount, checkedSum: checkedSum, paymentsSum: paymentsSum,
+      progressAmount: progressAmount, remaining: remaining, percent: percent
+    };
   }
 
   var draftGoalItems = [];
@@ -1626,7 +1631,7 @@
       var progressMeta = document.createElement("div");
       progressMeta.className = "period-meta";
       progressMeta.style.marginBottom = "8px";
-      progressMeta.textContent = fmtMoney(progress.checkedSum) + " of " + fmtMoney(progress.totalAmount) + " — " +
+      progressMeta.textContent = fmtMoney(progress.progressAmount) + " of " + fmtMoney(progress.totalAmount) + " — " +
         (progress.remaining <= 0 ? "Goal reached!" : fmtMoney(progress.remaining) + " to go");
       card.appendChild(progressMeta);
 
@@ -1731,6 +1736,99 @@
       itemFormWrap.appendChild(saveItemBtn);
       card.appendChild(addItemBtn);
       card.appendChild(itemFormWrap);
+
+      if ((goal.payments || []).length) {
+        var paymentsList = document.createElement("div");
+        paymentsList.style.marginTop = "14px";
+        goal.payments.forEach(function (payment) {
+          var prow = document.createElement("div");
+          prow.className = "goal-item-row";
+          var pNameSpan = document.createElement("span");
+          pNameSpan.className = "goal-item-name";
+          pNameSpan.textContent = "Payment — " + fmtDate(parseISODate(payment.date));
+          var pCostSpan = document.createElement("span");
+          pCostSpan.className = "goal-item-cost";
+          pCostSpan.textContent = fmtMoney(payment.amount);
+          var delPaymentBtn = document.createElement("button");
+          delPaymentBtn.type = "button";
+          delPaymentBtn.className = "btn danger-outline small";
+          delPaymentBtn.textContent = "✕";
+          delPaymentBtn.addEventListener("click", function () {
+            goal.payments = goal.payments.filter(function (p) { return p.id !== payment.id; });
+            setAccountBalance(accountBalance + Number(payment.amount));
+            saveGoals(goals);
+            renderGoals();
+          });
+          prow.appendChild(pNameSpan);
+          prow.appendChild(pCostSpan);
+          prow.appendChild(delPaymentBtn);
+          paymentsList.appendChild(prow);
+        });
+        card.appendChild(paymentsList);
+      }
+
+      var addPaymentBtn = document.createElement("button");
+      addPaymentBtn.type = "button";
+      addPaymentBtn.className = "btn secondary small";
+      addPaymentBtn.textContent = "+ Log payment";
+      addPaymentBtn.style.marginTop = "12px";
+
+      var paymentFormWrap = document.createElement("div");
+      paymentFormWrap.className = "collapsible hidden";
+      paymentFormWrap.style.marginTop = "10px";
+
+      var paymentDateField = document.createElement("div");
+      paymentDateField.className = "field";
+      var paymentDateLabel = document.createElement("label");
+      paymentDateLabel.textContent = "Date";
+      var paymentDateInput = document.createElement("input");
+      paymentDateInput.type = "date";
+      paymentDateInput.value = toISODate(new Date());
+      paymentDateInput.addEventListener("click", function () {
+        if (typeof paymentDateInput.showPicker === "function") {
+          try { paymentDateInput.showPicker(); } catch (e) {}
+        }
+      });
+      paymentDateField.appendChild(paymentDateLabel);
+      paymentDateField.appendChild(paymentDateInput);
+
+      var paymentAmountField = document.createElement("div");
+      paymentAmountField.className = "field";
+      var paymentAmountLabel = document.createElement("label");
+      paymentAmountLabel.textContent = "Amount ($)";
+      var paymentAmountInput = document.createElement("input");
+      paymentAmountInput.type = "number";
+      paymentAmountInput.min = "0";
+      paymentAmountInput.step = "0.01";
+      paymentAmountInput.placeholder = "e.g. 50";
+      paymentAmountField.appendChild(paymentAmountLabel);
+      paymentAmountField.appendChild(paymentAmountInput);
+
+      var savePaymentBtn = document.createElement("button");
+      savePaymentBtn.type = "button";
+      savePaymentBtn.className = "btn small";
+      savePaymentBtn.textContent = "Add payment";
+      savePaymentBtn.addEventListener("click", function () {
+        var dateVal = paymentDateInput.value;
+        var amount = Number(paymentAmountInput.value);
+        if (!dateVal) { alert("Pick a date."); return; }
+        if (!amount || amount <= 0) { alert("Enter a valid amount."); return; }
+        goal.payments = goal.payments || [];
+        goal.payments.push({ id: genId(), date: dateVal, amount: amount });
+        setAccountBalance(accountBalance - amount);
+        saveGoals(goals);
+        renderGoals();
+      });
+
+      addPaymentBtn.addEventListener("click", function () {
+        paymentFormWrap.classList.toggle("hidden");
+      });
+
+      paymentFormWrap.appendChild(paymentDateField);
+      paymentFormWrap.appendChild(paymentAmountField);
+      paymentFormWrap.appendChild(savePaymentBtn);
+      card.appendChild(addPaymentBtn);
+      card.appendChild(paymentFormWrap);
 
       listEl.appendChild(card);
     });
