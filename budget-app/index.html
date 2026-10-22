@@ -773,6 +773,14 @@
     var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
     return y + "-" + m + "-" + day;
   }
+  // Parses a "YYYY-MM-DD" string as a local-time date. Using `new Date(str)`
+  // directly parses date-only strings as UTC, which can shift the date by a
+  // day in timezones behind UTC — enough to push a just-logged entry out of
+  // the pay period currently on screen, making it look like it never saved.
+  function parseISODate(s) {
+    var parts = s.split("-");
+    return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  }
   function fmtMoney(n) {
     return "$" + (Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
@@ -822,7 +830,7 @@
       return { start: start, end: end, payday: end };
     }
     if (cfg.frequency === "biweekly") {
-      var anchor = startOfDay(new Date(cfg.biweeklyAnchor));
+      var anchor = startOfDay(parseISODate(cfg.biweeklyAnchor));
       var diffDays = daysBetween(anchor, date);
       var mod = ((diffDays % 14) + 14) % 14;
       var untilPayday = (14 - mod) % 14;
@@ -881,7 +889,7 @@
   function computePeriodIncome(period) {
     if (config.type === "salary") return config.salaryAmount;
     var periodEntries = entries.filter(function (e) {
-      var d = startOfDay(new Date(e.date));
+      var d = startOfDay(parseISODate(e.date));
       return d >= period.start && d <= period.end;
     });
     var totalHours = periodEntries.reduce(function (sum, e) { return sum + Number(e.hours); }, 0);
@@ -1301,7 +1309,7 @@
     } else {
       hoursCard.classList.remove("hidden");
       var periodEntries = entries.filter(function (e) {
-        var d = startOfDay(new Date(e.date));
+        var d = startOfDay(parseISODate(e.date));
         return d >= period.start && d <= period.end;
       }).sort(function (a, b) { return a.date.localeCompare(b.date); });
 
@@ -1316,7 +1324,7 @@
       periodEntries.forEach(function (e) {
         var tr = document.createElement("tr");
         var dateTd = document.createElement("td");
-        dateTd.textContent = fmtDate(new Date(e.date));
+        dateTd.textContent = fmtDate(parseISODate(e.date));
         var timeInTd = document.createElement("td");
         timeInTd.textContent = fmtTime(timeValueToMinutes(e.timeIn));
         var timeOutTd = document.createElement("td");
@@ -1341,7 +1349,7 @@
     }
 
     var periodExpenses = expenses.filter(function (e) {
-      var d = startOfDay(new Date(e.date));
+      var d = startOfDay(parseISODate(e.date));
       return d >= period.start && d <= period.end;
     }).sort(function (a, b) { return a.date.localeCompare(b.date); });
 
@@ -1423,7 +1431,7 @@
     tbody.innerHTML = "";
     periodExpenses.forEach(function (exp) {
       var tr = document.createElement("tr");
-      var dateTd = document.createElement("td"); dateTd.textContent = fmtDate(new Date(exp.date));
+      var dateTd = document.createElement("td"); dateTd.textContent = fmtDate(parseISODate(exp.date));
       var catTd = document.createElement("td"); catTd.textContent = categoryNameById(categories, exp.categoryId);
       var amtTd = document.createElement("td"); amtTd.textContent = fmtMoney(exp.amount);
       var noteTd = document.createElement("td"); noteTd.textContent = exp.note || "";
