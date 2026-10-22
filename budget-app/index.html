@@ -596,10 +596,11 @@
           <label for="goalName">Goal name</label>
           <input type="text" id="goalName" placeholder="e.g. Snowboarding gear">
         </div>
-        <div class="field">
-          <label for="goalTotal">Total price ($)</label>
-          <input type="number" id="goalTotal" min="0" step="0.01" placeholder="e.g. 1000">
-        </div>
+        <label>Items needed</label>
+        <p class="period-meta" style="margin-top:-4px;">Add what you need for this goal — their cost adds up to the goal's total price.</p>
+        <div id="goalDraftItemRows"></div>
+        <button type="button" class="btn secondary small" id="addGoalItemRowBtn">+ Add item</button>
+        <div class="period-meta" id="goalDraftTotal" style="margin:14px 0;">Total: $0.00</div>
         <button class="btn" id="addGoalBtn">Save goal</button>
       </div>
     </div>
@@ -1525,13 +1526,73 @@
   });
 
   // ---------- goals ----------
+  // A goal's total price is always the sum of its items' costs — there is
+  // no separate stored total, so adding or removing items keeps it in sync.
   function goalProgress(goal) {
+    var totalAmount = goal.items.reduce(function (sum, i) { return sum + Number(i.cost); }, 0);
     var checkedSum = goal.items.filter(function (i) { return i.checked; })
       .reduce(function (sum, i) { return sum + Number(i.cost); }, 0);
-    var remaining = Math.max(0, goal.totalAmount - checkedSum);
-    var percent = goal.totalAmount > 0 ? Math.min(100, (checkedSum / goal.totalAmount) * 100) : 0;
-    return { checkedSum: checkedSum, remaining: remaining, percent: percent };
+    var remaining = Math.max(0, totalAmount - checkedSum);
+    var percent = totalAmount > 0 ? Math.min(100, (checkedSum / totalAmount) * 100) : 0;
+    return { totalAmount: totalAmount, checkedSum: checkedSum, remaining: remaining, percent: percent };
   }
+
+  var draftGoalItems = [];
+  function renderGoalDraftItemRows() {
+    var rowsEl = document.getElementById("goalDraftItemRows");
+    rowsEl.innerHTML = "";
+    draftGoalItems.forEach(function (item, idx) {
+      var row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.style.alignItems = "flex-end";
+      row.style.marginBottom = "10px";
+
+      var nameField = document.createElement("div");
+      nameField.className = "field"; nameField.style.flex = "2"; nameField.style.marginBottom = "0";
+      var nameLabel = document.createElement("label"); nameLabel.textContent = "Item";
+      var nameInput = document.createElement("input");
+      nameInput.type = "text"; nameInput.value = item.name; nameInput.placeholder = "e.g. Snowboard";
+      nameInput.addEventListener("input", function () { item.name = nameInput.value; });
+      nameField.appendChild(nameLabel); nameField.appendChild(nameInput);
+
+      var costField = document.createElement("div");
+      costField.className = "field"; costField.style.flex = "1"; costField.style.marginBottom = "0";
+      var costLabel = document.createElement("label"); costLabel.textContent = "Cost ($)";
+      var costInput = document.createElement("input");
+      costInput.type = "number"; costInput.min = "0"; costInput.step = "0.01"; costInput.value = item.cost || "";
+      costInput.placeholder = "e.g. 400";
+      costInput.addEventListener("input", function () {
+        item.cost = Number(costInput.value) || 0;
+        updateGoalDraftTotal();
+      });
+      costField.appendChild(costLabel); costField.appendChild(costInput);
+
+      var delBtn = document.createElement("button");
+      delBtn.type = "button"; delBtn.className = "btn danger-outline small"; delBtn.textContent = "Remove";
+      delBtn.style.marginBottom = "0";
+      delBtn.addEventListener("click", function () {
+        draftGoalItems.splice(idx, 1);
+        renderGoalDraftItemRows();
+      });
+
+      row.appendChild(nameField); row.appendChild(costField); row.appendChild(delBtn);
+      rowsEl.appendChild(row);
+    });
+    updateGoalDraftTotal();
+  }
+  function updateGoalDraftTotal() {
+    var total = draftGoalItems.reduce(function (sum, i) { return sum + (Number(i.cost) || 0); }, 0);
+    document.getElementById("goalDraftTotal").textContent = "Total: " + fmtMoney(total);
+  }
+  document.getElementById("addGoalItemRowBtn").addEventListener("click", function () {
+    draftGoalItems.push({ id: genId(), name: "", cost: 0 });
+    renderGoalDraftItemRows();
+  });
+  document.getElementById("toggleGoalFormBtn").addEventListener("click", function () {
+    draftGoalItems = [{ id: genId(), name: "", cost: 0 }];
+    renderGoalDraftItemRows();
+  });
 
   function renderGoals() {
     var goals = loadGoals();
@@ -1565,7 +1626,7 @@
       var progressMeta = document.createElement("div");
       progressMeta.className = "period-meta";
       progressMeta.style.marginBottom = "8px";
-      progressMeta.textContent = fmtMoney(progress.checkedSum) + " of " + fmtMoney(goal.totalAmount) + " — " +
+      progressMeta.textContent = fmtMoney(progress.checkedSum) + " of " + fmtMoney(progress.totalAmount) + " — " +
         (progress.remaining <= 0 ? "Goal reached!" : fmtMoney(progress.remaining) + " to go");
       card.appendChild(progressMeta);
 
@@ -1713,14 +1774,17 @@
 
   document.getElementById("addGoalBtn").addEventListener("click", function () {
     var name = document.getElementById("goalName").value.trim();
-    var total = Number(document.getElementById("goalTotal").value);
     if (!name) { alert("Name the goal."); return; }
-    if (!total || total <= 0) { alert("Enter a valid total price."); return; }
+    var cleanedItems = draftGoalItems
+      .map(function (i) { return { id: i.id, name: i.name.trim(), cost: Number(i.cost) || 0, checked: false }; })
+      .filter(function (i) { return i.name; });
+    if (!cleanedItems.length) { alert("Add at least one item — its cost becomes the goal's price."); return; }
     var goals = loadGoals();
-    goals.push({ id: genId(), name: name, totalAmount: total, items: [] });
+    goals.push({ id: genId(), name: name, items: cleanedItems });
     saveGoals(goals);
     document.getElementById("goalName").value = "";
-    document.getElementById("goalTotal").value = "";
+    draftGoalItems = [];
+    renderGoalDraftItemRows();
     collapseForm("toggleGoalFormBtn", "goalFormWrap", "+ Add goal");
     renderGoals();
   });
