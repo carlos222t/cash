@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gigs — Find your next show</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;0,700;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="home-page" data-page="home">
+
+  <nav class="navbar">
+    <div class="container">
+      <div class="nav-left">
+        <a href="home.html" class="logo">
+          <svg width="24" height="24" viewBox="0 0 30 30" fill="none">
+            <rect x="3" y="12" width="4" height="12" rx="2" fill="#5B3DF5"/>
+            <rect x="10" y="6" width="4" height="18" rx="2" fill="#5B3DF5"/>
+            <rect x="17" y="2" width="4" height="22" rx="2" fill="#FF6B4A"/>
+            <rect x="24" y="9" width="4" height="15" rx="2" fill="#5B3DF5"/>
+          </svg>
+          Gigs
+        </a>
+        <div class="nav-links">
+          <a href="home.html" class="nav-link active">Find Gigs</a>
+          <a href="#" class="nav-link" onclick="event.preventDefault(); showToast('Venues directory is coming soon.');">Venues</a>
+          <a href="#" class="nav-link" onclick="event.preventDefault(); showToast('No new messages.');">Messages</a>
+          <a href="#" class="nav-link" onclick="event.preventDefault(); showToast('You\'re all caught up.');">Notifications<span class="badge-dot"></span></a>
+        </div>
+      </div>
+      <div class="nav-right">
+        <div class="dropdown-wrap">
+          <button type="button" class="avatar-btn" id="avatarBtn" aria-haspopup="true" aria-expanded="false">
+            <span id="avatarSlot"></span>
+            <span class="name" data-user-name>Guest</span>
+            <span class="chevron">▾</span>
+          </button>
+          <div class="dropdown-menu" id="profileDropdown">
+            <button type="button" class="dropdown-item" onclick="showToast('Profile editing isn\'t part of this demo.')">My profile</button>
+            <button type="button" class="dropdown-item" onclick="showToast('Settings isn\'t part of this demo.')">Settings</button>
+            <div class="dropdown-divider"></div>
+            <button type="button" class="dropdown-item" id="signOutBtn">Sign out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="container">
+      <h1>Find your next gig</h1>
+      <span class="hero-sub">Search thousands of live performance opportunities from real venues.</span>
+
+      <form class="search-bar" id="searchForm">
+        <div class="search-field">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" id="searchWhat" placeholder="Genre or gig type (e.g. Jazz, DJ set)" aria-label="What">
+        </div>
+        <div class="search-field">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 1118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <input type="text" id="searchWhere" placeholder="City or state" aria-label="Where">
+        </div>
+        <button type="submit" class="btn btn-primary">Find gigs</button>
+      </form>
+
+      <div class="filter-chip-row" id="filterChipRow"></div>
+    </div>
+  </section>
+
+  <main class="home-main">
+    <div class="container home-grid">
+
+      <div class="feed-col">
+        <div class="results-head">
+          <h2>Recommended for you</h2>
+          <span class="results-count" id="resultsCount"></span>
+        </div>
+        <div class="gig-feed" id="gigFeed"></div>
+      </div>
+
+      <aside class="sidebar">
+        <div class="side-card">
+          <h3>Profile completeness</h3>
+          <div class="completeness-ring-row">
+            <div class="completeness-ring" id="completenessRing" data-pct="0" style="--pct:0;"></div>
+            <span class="completeness-text">Finish your profile to get better matches.</span>
+          </div>
+          <ul class="completeness-list" id="completenessList"></ul>
+        </div>
+
+        <div class="side-card">
+          <h3>Your genres</h3>
+          <div class="side-chip-wrap" id="sidebarGenres"></div>
+        </div>
+
+        <div class="side-card">
+          <h3>Your venues</h3>
+          <div class="side-chip-wrap" id="sidebarVenues"></div>
+        </div>
+
+        <div class="side-card">
+          <h3>Saved gigs</h3>
+          <div class="saved-mini-list" id="sidebarSaved"></div>
+        </div>
+      </aside>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col footer-brand">
+          <div class="logo">
+            <svg width="22" height="22" viewBox="0 0 30 30" fill="none">
+              <rect x="3" y="12" width="4" height="12" rx="2" fill="#5B3DF5"/>
+              <rect x="10" y="6" width="4" height="18" rx="2" fill="#5B3DF5"/>
+              <rect x="17" y="2" width="4" height="22" rx="2" fill="#FF6B4A"/>
+              <rect x="24" y="9" width="4" height="15" rx="2" fill="#5B3DF5"/>
+            </svg>
+            Gigs
+          </div>
+          <p>The job marketplace built for live performers — musicians, DJs, and bands finding real bookings.</p>
+        </div>
+        <div class="footer-col">
+          <h4>For performers</h4>
+          <ul>
+            <li><a href="#" onclick="event.preventDefault()">Browse gigs</a></li>
+            <li><a href="#" onclick="event.preventDefault()">Build your profile</a></li>
+            <li><a href="#" onclick="event.preventDefault()">Career resources</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>For venues</h4>
+          <ul>
+            <li><a href="#" onclick="event.preventDefault()">Post a gig</a></li>
+            <li><a href="#" onclick="event.preventDefault()">Browse talent</a></li>
+            <li><a href="#" onclick="event.preventDefault()">Pricing</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <ul>
+            <li><a href="#" onclick="event.preventDefault()">About Gigs</a></li>
+            <li><a href="#" onclick="event.preventDefault()">Help center</a></li>
+            <li><a href="#" onclick="event.preventDefault()">Privacy &amp; terms</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 Gigs. All rights reserved.</span>
+        <span>Made for performers, by performers.</span>
+      </div>
+    </div>
+  </footer>
+
+  <div class="modal-overlay" id="gigModal" aria-hidden="true">
+    <div class="modal-card">
+      <button type="button" class="modal-close" id="modalCloseBtn" aria-label="Close">&times;</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>

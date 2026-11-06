@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gigs — Find your next show</title>
+<meta name="description" content="Gigs connects musicians, DJs, and bands with venues looking to book live talent.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;0,700;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="auth-page" data-page="auth">
+
+  <section class="auth-form-side">
+    <div class="auth-form-wrap">
+      <div class="logo" aria-hidden="false">
+        <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+          <rect x="3" y="12" width="4" height="12" rx="2" fill="#5B3DF5"/>
+          <rect x="10" y="6" width="4" height="18" rx="2" fill="#5B3DF5"/>
+          <rect x="17" y="2" width="4" height="22" rx="2" fill="#FF6B4A"/>
+          <rect x="24" y="9" width="4" height="15" rx="2" fill="#5B3DF5"/>
+        </svg>
+        Gigs
+      </div>
+
+      <div class="auth-tabs" role="tablist" aria-label="Log in or sign up">
+        <button type="button" class="auth-tab active" id="tabLogin" role="tab" aria-selected="true">Log in</button>
+        <button type="button" class="auth-tab" id="tabSignup" role="tab" aria-selected="false">Sign up</button>
+      </div>
+
+      <!-- LOGIN PANEL -->
+      <div class="auth-form-panel active" id="panelLogin">
+        <form class="auth-form" id="loginForm" novalidate>
+          <h1>Welcome back</h1>
+          <span class="subtitle">Log in to find your next gig.</span>
+
+          <div class="field">
+            <label for="loginEmail">Email address</label>
+            <input type="email" id="loginEmail" name="email" autocomplete="email" placeholder="you@example.com">
+            <span class="error-msg">Please enter a valid email.</span>
+          </div>
+
+          <div class="field">
+            <label for="loginPassword">Password</label>
+            <div class="input-group">
+              <input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="Your password">
+              <button type="button" class="input-adornment" data-toggle-password="loginPassword" aria-label="Show password">Show</button>
+            </div>
+            <span class="error-msg">Please enter your password.</span>
+          </div>
+
+          <a href="#" class="forgot-link" onclick="event.preventDefault(); showToast('Password reset isn\'t available in this demo.');">Forgot password?</a>
+
+          <button type="submit" class="btn btn-primary btn-block">Continue</button>
+        </form>
+        <p class="form-footer-link">New to Gigs? <button type="button" data-switch-mode="signup">Create an account</button></p>
+      </div>
+
+      <!-- SIGNUP PANEL -->
+      <div class="auth-form-panel" id="panelSignup">
+        <form class="auth-form" id="signupForm" novalidate>
+          <h1>Create your account</h1>
+          <span class="subtitle">It takes less than two minutes to get booking.</span>
+
+          <div class="field">
+            <label for="signupEmail">Email address</label>
+            <input type="email" id="signupEmail" name="email" autocomplete="email" placeholder="you@example.com">
+            <span class="error-msg">Please enter a valid email.</span>
+          </div>
+
+          <div class="field">
+            <label for="signupPassword">Password</label>
+            <div class="input-group">
+              <input type="password" id="signupPassword" name="password" autocomplete="new-password" placeholder="At least 8 characters">
+              <button type="button" class="input-adornment" data-toggle-password="signupPassword" aria-label="Show password">Show</button>
+            </div>
+            <div class="strength-meter" id="strengthMeter">
+              <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+            </div>
+            <div class="strength-label" id="strengthLabel"></div>
+            <span class="error-msg">Use at least 8 characters.</span>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">Create account</button>
+        </form>
+        <p class="form-footer-link">Already have an account? <button type="button" data-switch-mode="login">Log in</button></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="auth-brand-side" aria-hidden="true">
+    <div class="auth-brand-content">
+      <h2>Your next show starts here.</h2>
+      <p class="lead">Gigs connects musicians, DJs, and bands with venues that are hiring right now — no cold emails, no guesswork.</p>
+      <div class="brand-gig-cards">
+        <div class="brand-gig-card card-1">
+          <div class="bg-title">Weekend DJ Residency</div>
+          <div class="bg-meta">Lowtide Warehouse · Miami, FL</div>
+          <span class="bg-pay">$400/night</span>
+        </div>
+        <div class="brand-gig-card card-2">
+          <div class="bg-title">Rooftop Sunset Sessions</div>
+          <div class="bg-meta">Marigold Rooftop · Los Angeles, CA</div>
+          <span class="bg-pay">$275/set</span>
+        </div>
+        <div class="brand-gig-card card-3">
+          <div class="bg-title">Wedding Reception Band</div>
+          <div class="bg-meta">Hollow Pines Amphitheater · Denver, CO</div>
+          <span class="bg-pay">$1,200 flat</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<script src="app.js"></script>
+</body>
+</html>

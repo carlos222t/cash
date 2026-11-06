@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["-y", "http-server", "budget-app", "-p", "8743", "-c-1"],
       "port": 8743
+    },
+    {
+      "name": "dj-app",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["-y", "http-server", "dj-app", "-p", "8744", "-c-1"],
+      "port": 8744
     }
   ]
 }

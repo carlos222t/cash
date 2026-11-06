@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Set up your Gigs profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;0,700;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="onboard-page" data-page="onboarding">
+
+  <header class="onboard-header">
+    <div class="container onboard-header-row">
+      <div class="logo">
+        <svg width="26" height="26" viewBox="0 0 30 30" fill="none">
+          <rect x="3" y="12" width="4" height="12" rx="2" fill="#5B3DF5"/>
+          <rect x="10" y="6" width="4" height="18" rx="2" fill="#5B3DF5"/>
+          <rect x="17" y="2" width="4" height="22" rx="2" fill="#FF6B4A"/>
+          <rect x="24" y="9" width="4" height="15" rx="2" fill="#5B3DF5"/>
+        </svg>
+        Gigs
+      </div>
+    </div>
+    <div class="container">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">Step 1 of 5</div>
+    </div>
+  </header>
+
+  <main class="onboard-body">
+
+    <!-- STEP 1: ACCOUNT -->
+    <section class="onboard-step active" id="stepAccount">
+      <div class="step-eyebrow">Account</div>
+      <h2>Confirm your account</h2>
+      <span class="step-sub">We'll use this to keep your profile and bookings in sync.</span>
+
+      <div class="field">
+        <label for="onboardEmail">Email address</label>
+        <input type="email" id="onboardEmail" autocomplete="email" placeholder="you@example.com">
+        <span class="error-msg">Please enter a valid email.</span>
+      </div>
+      <div class="field">
+        <label for="onboardPassword">Password</label>
+        <input type="password" id="onboardPassword" autocomplete="new-password" placeholder="At least 8 characters">
+        <span class="error-msg">Use at least 8 characters.</span>
+        <p class="hint">Already set this during sign-up? You can leave it blank.</p>
+      </div>
+
+      <div class="step-actions">
+        <span></span>
+        <div class="right-actions">
+          <button type="button" class="btn btn-primary" id="accountNext">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2: PHONE -->
+    <section class="onboard-step" id="stepPhone">
+      <div class="step-eyebrow">Step 2 of 5</div>
+      <h2>What's your phone number?</h2>
+      <span class="step-sub">Venues can reach you faster when there's a number on file. Totally optional.</span>
+
+      <div class="field">
+        <label for="phoneNumber">Phone number</label>
+        <div class="phone-row">
+          <select id="countryCode" aria-label="Country code"></select>
+          <input type="tel" id="phoneNumber" placeholder="(555) 123-4567" inputmode="tel">
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button type="button" class="btn btn-secondary" id="phoneBack">Back</button>
+        <div class="right-actions">
+          <button type="button" class="skip-link" id="phoneSkip">Skip</button>
+          <button type="button" class="btn btn-primary" id="phoneNext">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3: PHOTO -->
+    <section class="onboard-step" id="stepPhoto">
+      <div class="step-eyebrow">Step 3 of 5</div>
+      <h2>Add a profile picture</h2>
+      <span class="step-sub">Venues like putting a face to a booking. Drag a photo in, or click to upload.</span>
+
+      <div class="avatar-upload-zone">
+        <div class="avatar-circle" id="avatarCircle" tabindex="0" role="button" aria-label="Upload profile picture">
+          <img id="avatarPreview" alt="Your profile picture preview" style="display:none;">
+          <div class="avatar-placeholder" id="avatarPlaceholder">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 15a4 4 0 100-8 4 4 0 000 8z"/><path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>
+            <span>Drag &amp; drop or click</span>
+          </div>
+        </div>
+        <input type="file" id="avatarInput" accept="image/*" class="visually-hidden" aria-hidden="true">
+
+        <div class="avatar-zoom-row" id="avatarZoomRow">
+          <label for="avatarZoom">Zoom</label>
+          <input type="range" id="avatarZoom" min="100" max="200" value="100">
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button type="button" class="btn btn-secondary" id="photoBack">Back</button>
+        <div class="right-actions">
+          <button type="button" class="skip-link" id="photoSkip">Skip for now</button>
+          <button type="button" class="btn btn-primary" id="photoNext">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 4: VENUES -->
+    <section class="onboard-step" id="stepVenues">
+      <div class="step-eyebrow">Step 4 of 5</div>
+      <h2>Venues you've performed at</h2>
+      <span class="step-sub">Add a few places you've played before. It helps venues trust your experience.</span>
+
+      <div class="chip-input-row">
+        <input type="text" id="venueInput" placeholder="e.g. The Velvet Hollow" aria-label="Venue name">
+        <button type="button" class="btn btn-secondary" id="venueAddBtn">Add</button>
+      </div>
+      <div class="chips-wrap" id="venuesWrap"></div>
+
+      <div class="step-actions">
+        <button type="button" class="btn btn-secondary" id="venuesBack">Back</button>
+        <div class="right-actions">
+          <button type="button" class="skip-link" id="venuesSkip">Skip</button>
+          <button type="button" class="btn btn-primary" id="venuesNext">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 5: GENRES -->
+    <section class="onboard-step" id="stepGenres">
+      <div class="step-eyebrow">Step 5 of 5</div>
+      <h2>Your style of music</h2>
+      <span class="step-sub">Pick everything that applies — this shapes the gigs we recommend.</span>
+
+      <div class="selected-count-badge" id="selectedCountBadge">No genres selected yet</div>
+      <div class="genre-grid" id="genreGrid"></div>
+
+      <div class="field other-genre-field" id="otherGenreField">
+        <label for="otherGenreInput">Tell us your genre</label>
+        <input type="text" id="otherGenreInput" placeholder="e.g. Shoegaze">
+      </div>
+
+      <div class="step-actions">
+        <button type="button" class="btn btn-secondary" id="genresBack">Back</button>
+        <div class="right-actions">
+          <button type="button" class="btn btn-primary" id="genresNext" disabled>Finish</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- FINAL: ALL DONE -->
+    <section class="onboard-step" id="stepDone">
+      <div class="done-screen">
+        <div class="done-check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#1DA974" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path class="check-path" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+        <h2>All done!</h2>
+        <span class="step-sub">Your profile is ready. Let's find you a stage.</span>
+        <button type="button" class="btn btn-primary" id="goHomeBtn" style="margin-top:12px;">Go to my home page</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Full-screen transition between Phone and Photo steps -->
+  <div class="transition-screen" id="transitionScreen">
+    <h2>Let's get you ready</h2>
+    <div class="transition-loader" aria-label="Loading"></div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>
