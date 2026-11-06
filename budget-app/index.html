@@ -318,7 +318,7 @@
   </div>
 </div>
 <button type="button" class="theme-toggle" id="themeToggleBtn" aria-label="Toggle dark mode">🌙</button>
-<button type="button" class="btn secondary small switch-user-btn hidden" id="switchUserBtn">Switch user</button>
+<button type="button" class="btn secondary small switch-user-btn hidden" id="lockBtn">Lock</button>
 <div class="wrap">
 
   <div class="toggle-group hidden" id="tabBar">
@@ -329,14 +329,15 @@
 
   <!-- SIGN IN VIEW -->
   <div id="signInView" class="hidden">
-    <h1>Welcome</h1>
-    <p class="subtitle">Pick a username to continue — no password needed. It just keeps your data separate from anyone else using this device.</p>
+    <h1 id="signInHeading">Welcome</h1>
+    <p class="subtitle" id="signInSubtitle">Create a 4-digit PIN to lock your data on this device.</p>
     <div class="card">
       <div class="field">
-        <label for="signInUsername">Username</label>
-        <input type="text" id="signInUsername" placeholder="e.g. carlos" maxlength="40" autocomplete="username">
+        <label for="pinInput">PIN</label>
+        <input type="password" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off">
       </div>
-      <button class="btn" id="signInBtn">Continue</button>
+      <button class="btn" id="pinSubmitBtn">Create PIN</button>
+      <button type="button" class="btn secondary small hidden" id="forgotPinBtn" style="margin-top:10px;">Forgot PIN? Reset it</button>
     </div>
   </div>
 
@@ -664,21 +665,45 @@
 (function () {
   "use strict";
 
-  var STORAGE_CURRENT_USER = "budgetApp.currentUser";
-
-  function loadCurrentUsername() {
-    try { return localStorage.getItem(STORAGE_CURRENT_USER); } catch (e) { return null; }
-  }
-  // Every account's data lives under its own key namespace, so switching
-  // usernames on the same browser never mixes up data between people.
+  var STORAGE_PIN = "budgetApp.pin";
+  var currentUsername = "default"; // single local account on this device — the PIN is just a lock, not an identity
   function nsKey(suffix) { return "budgetApp.user." + currentUsername + "." + suffix; }
 
-  var currentUsername = loadCurrentUsername();
-  var config = currentUsername ? loadConfig() : null;
-  var entries = currentUsername ? loadEntries() : [];
-  var accountBalance = currentUsername ? loadBalance() : 0;
-  var previousBalance = currentUsername ? loadPreviousBalance() : 0;
-  var expenses = currentUsername ? loadExpenses() : [];
+  // One-time cleanup: an earlier version namespaced data per typed username.
+  // Fold any of that into the single "default" account so nothing is stranded
+  // behind a username someone no longer remembers typing.
+  (function migrateLegacyUsernamedData() {
+    try {
+      var re = /^budgetApp\.user\.([^.]+)\.(.+)$/;
+      Object.keys(localStorage).forEach(function (key) {
+        var m = key.match(re);
+        if (m && m[1] !== "default") {
+          var newKey = "budgetApp.user.default." + m[2];
+          if (localStorage.getItem(newKey) === null) {
+            localStorage.setItem(newKey, localStorage.getItem(key));
+          }
+          localStorage.removeItem(key);
+        }
+      });
+      localStorage.removeItem("budgetApp.currentUser");
+    } catch (e) {}
+  })();
+
+  function loadPin() {
+    try { return localStorage.getItem(STORAGE_PIN); } catch (e) { return null; }
+  }
+  function savePin(pin) {
+    try { localStorage.setItem(STORAGE_PIN, pin); } catch (e) {}
+  }
+  function clearPin() {
+    try { localStorage.removeItem(STORAGE_PIN); } catch (e) {}
+  }
+
+  var config = loadConfig();
+  var entries = loadEntries();
+  var accountBalance = loadBalance();
+  var previousBalance = loadPreviousBalance();
+  var expenses = loadExpenses();
   var refDate = startOfDay(new Date()); // drives which pay period is shown
 
   // ---------- storage ----------
@@ -1150,7 +1175,7 @@
   var tabHomeBtn = document.getElementById("tabHomeBtn");
   var tabGoalsBtn = document.getElementById("tabGoalsBtn");
   var tabCalendarBtn = document.getElementById("tabCalendarBtn");
-  var switchUserBtn = document.getElementById("switchUserBtn");
+  var lockBtn = document.getElementById("lockBtn");
 
   function hideAllViews() {
     signInView.classList.add("hidden");
@@ -1161,15 +1186,29 @@
     goalsView.classList.add("hidden");
   }
 
-  function showSignIn() {
+  function showPinGate() {
     hideAllViews();
     tabBar.classList.add("hidden");
-    switchUserBtn.classList.add("hidden");
+    lockBtn.classList.add("hidden");
     signInView.classList.remove("hidden");
+    var pinInput = document.getElementById("pinInput");
+    pinInput.value = "";
+    if (loadPin()) {
+      document.getElementById("signInHeading").textContent = "Welcome back";
+      document.getElementById("signInSubtitle").textContent = "Enter your 4-digit PIN to unlock your data.";
+      document.getElementById("pinSubmitBtn").textContent = "Unlock";
+      document.getElementById("forgotPinBtn").classList.remove("hidden");
+    } else {
+      document.getElementById("signInHeading").textContent = "Welcome";
+      document.getElementById("signInSubtitle").textContent = "Create a 4-digit PIN to lock your data on this device.";
+      document.getElementById("pinSubmitBtn").textContent = "Create PIN";
+      document.getElementById("forgotPinBtn").classList.add("hidden");
+    }
+    pinInput.focus();
   }
 
   function routeToApp() {
-    switchUserBtn.classList.remove("hidden");
+    lockBtn.classList.remove("hidden");
     if (config) {
       if (loadBudgetConfig()) showDashboard();
       else showBudgetSetup(false);
@@ -1178,30 +1217,34 @@
     }
   }
 
-  function completeSignIn() {
-    var name = document.getElementById("signInUsername").value.trim();
-    if (!name) { alert("Enter a username."); return; }
-    currentUsername = name;
-    try { localStorage.setItem(STORAGE_CURRENT_USER, name); } catch (e) {}
-    config = loadConfig();
-    entries = loadEntries();
-    accountBalance = loadBalance();
-    previousBalance = loadPreviousBalance();
-    expenses = loadExpenses();
-    refDate = startOfDay(new Date());
+  function completePinSubmit() {
+    var pinInput = document.getElementById("pinInput");
+    var pin = pinInput.value.trim();
+    if (!/^\d{4}$/.test(pin)) { alert("Enter a 4-digit PIN."); return; }
+    var existingPin = loadPin();
+    if (existingPin) {
+      if (pin !== existingPin) { alert("That PIN doesn't match. Try again."); pinInput.value = ""; pinInput.focus(); return; }
+    } else {
+      savePin(pin);
+    }
     routeToApp();
   }
 
-  document.getElementById("signInBtn").addEventListener("click", completeSignIn);
-  document.getElementById("signInUsername").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") completeSignIn();
+  document.getElementById("pinSubmitBtn").addEventListener("click", completePinSubmit);
+  document.getElementById("pinInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") completePinSubmit();
+  });
+  document.getElementById("pinInput").addEventListener("input", function () {
+    this.value = this.value.replace(/\D/g, "").slice(0, 4);
+    if (this.value.length === 4) completePinSubmit();
+  });
+  document.getElementById("forgotPinBtn").addEventListener("click", function () {
+    if (!confirm("Reset your PIN? Your saved data stays — you'll just set a new PIN.")) return;
+    clearPin();
+    showPinGate();
   });
 
-  switchUserBtn.addEventListener("click", function () {
-    if (!confirm("Switch user? Your data for \"" + currentUsername + "\" stays saved — sign back in with the same username anytime.")) return;
-    try { localStorage.removeItem(STORAGE_CURRENT_USER); } catch (e) {}
-    location.reload();
-  });
+  lockBtn.addEventListener("click", showPinGate);
 
   function setActiveTab(btn) {
     [tabHomeBtn, tabGoalsBtn, tabCalendarBtn].forEach(function (b) {
@@ -2056,7 +2099,7 @@
   updateThemeToggleIcon();
 
   // ---------- welcome splash ----------
-  document.getElementById("welcomeSplashText").textContent = currentUsername ? ("Welcome back, " + currentUsername) : "Welcome";
+  document.getElementById("welcomeSplashText").textContent = loadPin() ? "Welcome back" : "Welcome";
   setTimeout(function () {
     var splash = document.getElementById("welcomeSplash");
     splash.classList.add("fade-out");
@@ -2076,11 +2119,9 @@
   updateFrequencyFields();
   setType("salary");
 
-  if (currentUsername) {
-    routeToApp();
-  } else {
-    showSignIn();
-  }
+  // Always gate on load — that's the point of a lock PIN. "Forgot PIN" and
+  // the fixed "default" namespace mean this never risks the saved data.
+  showPinGate();
 })();
 </script>
 </body>
